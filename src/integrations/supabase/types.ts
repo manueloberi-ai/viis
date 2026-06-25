@@ -16,69 +16,179 @@ export type Database = {
     Tables: {
       inventory_items: {
         Row: {
+          campi_spuntati: Json
           categoria: string | null
+          categoria_prodotto: string | null
           codice_tracciamento: string | null
-          costo_acquisto: number
+          costo_acquisto: number | null
           costo_spedizione: number | null
+          costo_spedizione_valore: number | null
           created_at: string
           data_acquisto: string | null
+          data_vendita: string | null
           descrizione: string | null
+          destinazione: string | null
           fee_piattaforma: number | null
+          fonte_acquisto: string | null
           foto_url: string | null
           id: string
-          nome: string
+          margine_profitto: number | null
+          mese_acquisto: string | null
+          mese_vendita: string | null
+          nome_oggetto: string | null
           note: string | null
-          piattaforma: string | null
+          piattaforma_vendita: string | null
+          posizione_inventario: string | null
           prezzo_vendita: number | null
-          stato: string
+          prezzo_vendita_valore: number | null
+          profitto: number | null
+          ricavi_netti: number | null
+          soldi_persi: number | null
+          spedizione: string | null
+          stato_prodotto: string
+          tasse: number | null
           titolo: string | null
           updated_at: string
           user_id: string
           zona_acquisto: string | null
         }
         Insert: {
+          campi_spuntati?: Json
           categoria?: string | null
+          categoria_prodotto?: string | null
           codice_tracciamento?: string | null
-          costo_acquisto?: number
+          costo_acquisto?: number | null
           costo_spedizione?: number | null
+          costo_spedizione_valore?: number | null
           created_at?: string
           data_acquisto?: string | null
+          data_vendita?: string | null
           descrizione?: string | null
+          destinazione?: string | null
           fee_piattaforma?: number | null
+          fonte_acquisto?: string | null
           foto_url?: string | null
           id?: string
-          nome: string
+          margine_profitto?: number | null
+          mese_acquisto?: string | null
+          mese_vendita?: string | null
+          nome_oggetto?: string | null
           note?: string | null
-          piattaforma?: string | null
+          piattaforma_vendita?: string | null
+          posizione_inventario?: string | null
           prezzo_vendita?: number | null
-          stato?: string
+          prezzo_vendita_valore?: number | null
+          profitto?: number | null
+          ricavi_netti?: number | null
+          soldi_persi?: number | null
+          spedizione?: string | null
+          stato_prodotto: string
+          tasse?: number | null
           titolo?: string | null
           updated_at?: string
           user_id: string
           zona_acquisto?: string | null
         }
         Update: {
+          campi_spuntati?: Json
           categoria?: string | null
+          categoria_prodotto?: string | null
           codice_tracciamento?: string | null
-          costo_acquisto?: number
+          costo_acquisto?: number | null
           costo_spedizione?: number | null
+          costo_spedizione_valore?: number | null
           created_at?: string
           data_acquisto?: string | null
+          data_vendita?: string | null
           descrizione?: string | null
+          destinazione?: string | null
           fee_piattaforma?: number | null
+          fonte_acquisto?: string | null
           foto_url?: string | null
           id?: string
-          nome?: string
+          margine_profitto?: number | null
+          mese_acquisto?: string | null
+          mese_vendita?: string | null
+          nome_oggetto?: string | null
           note?: string | null
-          piattaforma?: string | null
+          piattaforma_vendita?: string | null
+          posizione_inventario?: string | null
           prezzo_vendita?: number | null
-          stato?: string
+          prezzo_vendita_valore?: number | null
+          profitto?: number | null
+          ricavi_netti?: number | null
+          soldi_persi?: number | null
+          spedizione?: string | null
+          stato_prodotto?: string
+          tasse?: number | null
           titolo?: string | null
           updated_at?: string
           user_id?: string
           zona_acquisto?: string | null
         }
         Relationships: []
+      }
+      inventory_template_fields: {
+        Row: {
+          categoria_prodotto: string | null
+          costo_spedizione: number | null
+          created_at: string
+          data_vendita: string | null
+          destinazione: string | null
+          id: string
+          inventory_item_id: string | null
+          mese_vendita: string | null
+          nome_oggetto: string | null
+          prezzo_vendita: number | null
+          spedizione: string | null
+          stato_prodotto: string | null
+          tasse: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          categoria_prodotto?: string | null
+          costo_spedizione?: number | null
+          created_at?: string
+          data_vendita?: string | null
+          destinazione?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          mese_vendita?: string | null
+          nome_oggetto?: string | null
+          prezzo_vendita?: number | null
+          spedizione?: string | null
+          stato_prodotto?: string | null
+          tasse?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          categoria_prodotto?: string | null
+          costo_spedizione?: number | null
+          created_at?: string
+          data_vendita?: string | null
+          destinazione?: string | null
+          id?: string
+          inventory_item_id?: string | null
+          mese_vendita?: string | null
+          nome_oggetto?: string | null
+          prezzo_vendita?: number | null
+          spedizione?: string | null
+          stato_prodotto?: string | null
+          tasse?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_template_fields_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_accounts: {
         Row: {
