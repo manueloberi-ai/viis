@@ -706,6 +706,9 @@ function buildItemPayload(form: FormState, userId: string): TablesInsert<"invent
     ricavi_netti: numberOrNull(form.ricavi_netti),
     soldi_persi: numberOrNull(form.soldi_persi),
     campi_spuntati: buildCheckedJson(form),
+    titolo: emptyToNull(form.titolo),
+    descrizione: emptyToNull(form.descrizione),
+    foto_url: emptyToNull(form.foto_url),
   };
 }
 
