@@ -700,6 +700,27 @@ function Field({ label, children, error, fieldKey }: { label: string; children: 
   );
 }
 
+function PhotoThumb({ url }: { url: string | null }) {
+  if (!url) {
+    return (
+      <div className="grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground/60">
+        <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className="h-12 w-12 rounded-lg border border-border object-cover"
+      onError={(e) => {
+        const el = e.currentTarget as HTMLImageElement;
+        el.replaceWith(Object.assign(document.createElement("div"), { className: "grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground/60", innerHTML: "" }));
+      }}
+    />
+  );
+}
+
 function PhotoUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div className="space-y-2">
