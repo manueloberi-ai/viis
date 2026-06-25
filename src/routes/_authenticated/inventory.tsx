@@ -560,7 +560,7 @@ function InventoryPage() {
   );
 }
 
-function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <Card className="border-border bg-card p-5">
       <div className="flex items-center justify-between">
@@ -572,7 +572,7 @@ function MetricCard({ icon, label, value }: { icon: React.ReactNode; label: stri
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   const checked = Object.values(CHECKED_LABELS).includes(label);
   return (
     <label className="space-y-2">
@@ -659,16 +659,21 @@ function buildTemplatePayload(form: FormState, userId: string, inventoryItemId: 
 }
 
 function buildCheckedJson(form: FormState) {
-  const entries = CHECKED_KEYS.map((key) => [key, key.includes("costo") || key.includes("prezzo") || key === "tasse" ? numberOrNull(form[key]) : emptyToNull(form[key])]);
+  const numericKeys = new Set(["prezzo_vendita_valore", "costo_spedizione", "tasse"]);
+  const entries = CHECKED_KEYS.map((key) => [
+    key,
+    numericKeys.has(key) ? numberOrNull(form[key]) : emptyToNull(form[key]),
+  ]);
   return Object.fromEntries(entries.filter(([, value]) => value !== null));
 }
 
-function bind(setter: React.Dispatch<React.SetStateAction<FormState>>, key: keyof FormState) {
-  return (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+function bind(setter: Dispatch<SetStateAction<FormState>>, key: keyof FormState) {
+  return (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = event.target.value;
     setter((prev) => ({ ...prev, [key]: value }));
   };
 }
+
 
 function emptyToNull(value: string) {
   const trimmed = value.trim();
