@@ -546,7 +546,7 @@ function InventoryPage() {
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
             <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
-            <Field label="Categoria">
+            <Field label="Categoria" error={errors.categoria_prodotto}>
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
                 <SelectContent>
