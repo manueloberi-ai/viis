@@ -175,6 +175,9 @@ const emptyForm: FormState = {
   mese_vendita: "",
   ricavi_netti: "",
   soldi_persi: "",
+  titolo: "",
+  descrizione: "",
+  foto_url: "",
 };
 
 function InventoryPage() {
