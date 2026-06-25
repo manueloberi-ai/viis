@@ -155,7 +155,7 @@ function InventoryPage() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data satisfies InventoryItem[];
+      return (data ?? []) as InventoryItem[];
     },
   });
 
@@ -167,7 +167,7 @@ function InventoryPage() {
         .select("*")
         .order("updated_at", { ascending: false });
       if (error) throw error;
-      return data satisfies TemplateRow[];
+      return (data ?? []) as TemplateRow[];
     },
   });
 
@@ -184,10 +184,11 @@ function InventoryPage() {
         item.destinazione,
         item.codice_tracciamento,
       ]
-        .filter(Boolean)
-        .some((value) => value!.toLowerCase().includes(needle)),
+        .filter((value): value is string => Boolean(value))
+        .some((value) => value.toLowerCase().includes(needle)),
     );
   }, [inventoryQuery.data, query]);
+
 
   const totals = useMemo(() => {
     const items = inventoryQuery.data ?? [];
