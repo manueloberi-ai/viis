@@ -534,7 +534,7 @@ function InventoryPage() {
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
-            <Field label="Stato prodotto">
+            <Field label="Stato prodotto" error={errors.stato_prodotto}>
               <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
                 <SelectContent>
@@ -542,7 +542,7 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Nome oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
+            <Field label="Nome oggetto" error={errors.nome_oggetto}><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
             <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
