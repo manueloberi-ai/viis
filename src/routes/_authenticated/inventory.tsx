@@ -271,6 +271,7 @@ function InventoryPage() {
       setOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setErrors({});
     },
     onError: (error: Error) => {
       toast.error("Salvataggio non riuscito", { description: error.message });
