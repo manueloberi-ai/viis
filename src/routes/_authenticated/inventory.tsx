@@ -605,7 +605,7 @@ function InventoryPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
-            <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
+            <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               <Save className="h-4 w-4" />
               {saveMutation.isPending ? "Salvataggio..." : "Salva articolo"}
             </Button>
