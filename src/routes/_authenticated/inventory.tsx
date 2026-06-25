@@ -2,8 +2,42 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Euro, PackagePlus, Pencil, Save, Search, Sparkles, Trash2 } from "lucide-react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+
+const requiredString = (label: string) =>
+  z.string().trim().min(1, `${label} è obbligatorio`).max(200, `${label} troppo lungo (max 200)`);
+const requiredNumber = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} è obbligatorio`)
+    .refine((v) => {
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n);
+    }, `${label} deve essere un numero valido`)
+    .refine((v) => Number(v.replace(",", ".")) >= 0, `${label} non può essere negativo`);
+const requiredDate = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} è obbligatorio`)
+    .refine((v) => !Number.isNaN(new Date(v).getTime()), `${label} non è una data valida`);
+
+const checkedSchema = z.object({
+  stato_prodotto: requiredString("Stato prodotto"),
+  nome_oggetto: requiredString("Nome oggetto"),
+  categoria_prodotto: requiredString("Categoria"),
+  data_vendita: requiredDate("Data vendita"),
+  prezzo_vendita_valore: requiredNumber("Prezzo vendita"),
+  spedizione: requiredString("Spedizione"),
+  costo_spedizione: requiredNumber("Costo spedizione"),
+  destinazione: requiredString("Destinazione"),
+  tasse: requiredNumber("Tasse"),
+  mese_vendita: requiredString("Mese vendita"),
+});
+
+type CheckedErrors = Partial<Record<(typeof CHECKED_KEYS)[number], string>>;
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -146,6 +180,7 @@ function InventoryPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [errors, setErrors] = useState<CheckedErrors>({});
 
   const inventoryQuery = useQuery({
     queryKey: ["inventory-items"],
@@ -222,17 +257,12 @@ function InventoryPage() {
       if (itemResult.error) throw itemResult.error;
 
       const checkedPayload = buildTemplatePayload(payload, user.id, itemResult.data.id);
-      const existingTemplate = templatesQuery.data?.find((row) => row.inventory_item_id === itemResult.data.id);
-      if (existingTemplate) {
-        const { error } = await supabase
-          .from("inventory_template_fields")
-          .update(checkedPayload)
-          .eq("id", existingTemplate.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("inventory_template_fields").insert(checkedPayload);
-        if (error) throw error;
-      }
+      // Upsert by inventory_item_id so the unique constraint handles both insert and update
+      // without depending on potentially stale cached template rows.
+      const { error: tplError } = await supabase
+        .from("inventory_template_fields")
+        .upsert(checkedPayload, { onConflict: "inventory_item_id" });
+      if (tplError) throw tplError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory-items"] });
@@ -241,6 +271,7 @@ function InventoryPage() {
       setOpen(false);
       setEditing(null);
       setForm(emptyForm);
+      setErrors({});
     },
     onError: (error: Error) => {
       toast.error("Salvataggio non riuscito", { description: error.message });
@@ -265,12 +296,14 @@ function InventoryPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setErrors({});
     setOpen(true);
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
     setForm(formFromItem(item));
+    setErrors({});
     setOpen(true);
   };
 
@@ -288,8 +321,30 @@ function InventoryPage() {
       tasse: stringifyNumber(template.tasse),
       mese_vendita: template.mese_vendita ?? prev.mese_vendita,
     }));
+    setErrors({});
     setOpen(true);
     toast.success("Campi spuntati applicati al form");
+  };
+
+  const handleSubmit = () => {
+    const checkedValues = Object.fromEntries(
+      CHECKED_KEYS.map((key) => [key, form[key]]),
+    ) as Record<(typeof CHECKED_KEYS)[number], string>;
+    const result = checkedSchema.safeParse(checkedValues);
+    if (!result.success) {
+      const fieldErrors: CheckedErrors = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as (typeof CHECKED_KEYS)[number] | undefined;
+        if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
+      }
+      setErrors(fieldErrors);
+      toast.error("Controlla i campi obbligatori (spunta V)", {
+        description: `${Object.keys(fieldErrors).length} campo/i da correggere`,
+      });
+      return;
+    }
+    setErrors({});
+    saveMutation.mutate(form);
   };
 
   return (
@@ -479,7 +534,7 @@ function InventoryPage() {
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
-            <Field label="Stato prodotto">
+            <Field label="Stato prodotto" error={errors.stato_prodotto}>
               <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
                 <SelectContent>
@@ -487,11 +542,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Nome oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
+            <Field label="Nome oggetto" error={errors.nome_oggetto}><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
             <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
-            <Field label="Categoria">
+            <Field label="Categoria" error={errors.categoria_prodotto}>
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
                 <SelectContent>
@@ -500,8 +555,8 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
-            <Field label="Prezzo vendita"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita}><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore}><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
@@ -510,7 +565,7 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Spedizione">
+            <Field label="Spedizione" error={errors.spedizione}>
               <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Metodo spedizione" /></SelectTrigger>
                 <SelectContent>
@@ -518,9 +573,9 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Costo spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
+            <Field label="Costo spedizione" error={errors.costo_spedizione}><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
             <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
-            <Field label="Destinazione">
+            <Field label="Destinazione" error={errors.destinazione}>
               <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
                 <SelectContent>
@@ -528,11 +583,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
+            <Field label="Tasse" error={errors.tasse}><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita}><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
@@ -550,7 +605,7 @@ function InventoryPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
-            <Button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}>
+            <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               <Save className="h-4 w-4" />
               {saveMutation.isPending ? "Salvataggio..." : "Salva articolo"}
             </Button>
@@ -573,7 +628,7 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   const checked = Object.values(CHECKED_LABELS).includes(label);
   return (
     <label className="space-y-2">
@@ -581,7 +636,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
         <span>{label}</span>
         {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
       </div>
-      {children}
+      <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
+        {children}
+      </div>
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
   );
 }
