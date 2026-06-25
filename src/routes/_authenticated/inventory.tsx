@@ -257,17 +257,12 @@ function InventoryPage() {
       if (itemResult.error) throw itemResult.error;
 
       const checkedPayload = buildTemplatePayload(payload, user.id, itemResult.data.id);
-      const existingTemplate = templatesQuery.data?.find((row) => row.inventory_item_id === itemResult.data.id);
-      if (existingTemplate) {
-        const { error } = await supabase
-          .from("inventory_template_fields")
-          .update(checkedPayload)
-          .eq("id", existingTemplate.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("inventory_template_fields").insert(checkedPayload);
-        if (error) throw error;
-      }
+      // Upsert by inventory_item_id so the unique constraint handles both insert and update
+      // without depending on potentially stale cached template rows.
+      const { error: tplError } = await supabase
+        .from("inventory_template_fields")
+        .upsert(checkedPayload, { onConflict: "inventory_item_id" });
+      if (tplError) throw tplError;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory-items"] });
