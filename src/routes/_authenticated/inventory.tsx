@@ -678,10 +678,10 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
+function Field({ label, children, error, fieldKey }: { label: string; children: ReactNode; error?: string; fieldKey?: string }) {
   const checked = Object.values(CHECKED_LABELS).includes(label);
   return (
-    <label className="space-y-2">
+    <label className="space-y-2" data-field={fieldKey}>
       <div className="flex items-center gap-2 text-sm font-medium">
         <span>{label}</span>
         {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
@@ -691,6 +691,32 @@ function Field({ label, children, error }: { label: string; children: ReactNode;
       </div>
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
+  );
+}
+
+function PhotoUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">Foto principale</div>
+      <div className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-background/40 transition-colors hover:border-primary/50 hover:bg-primary/5">
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="Anteprima" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-4 text-center text-xs text-muted-foreground">
+            <UploadCloud className="h-6 w-6 text-muted-foreground/70" />
+            <div className="font-medium text-foreground">Incolla URL immagine</div>
+            <div>JPG, PNG o WebP — preview live qui sotto</div>
+          </div>
+        )}
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://…/foto.jpg"
+        inputMode="url"
+      />
+    </div>
   );
 }
 
