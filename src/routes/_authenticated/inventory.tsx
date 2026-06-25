@@ -628,7 +628,7 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
   const checked = Object.values(CHECKED_LABELS).includes(label);
   return (
     <label className="space-y-2">
@@ -636,7 +636,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
         <span>{label}</span>
         {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
       </div>
-      {children}
+      <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
+        {children}
+      </div>
+      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
   );
 }
