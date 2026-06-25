@@ -494,7 +494,7 @@ function InventoryPage() {
                     ))}
                 {!inventoryQuery.isLoading && filteredItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={23} className="py-12 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={25} className="py-12 text-center text-sm text-muted-foreground">
                       Nessun articolo trovato con questi filtri.
                     </TableCell>
                   </TableRow>
