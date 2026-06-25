@@ -439,18 +439,22 @@ function InventoryPage() {
                 {inventoryQuery.isLoading
                   ? Array.from({ length: 6 }).map((_, index) => (
                       <TableRow key={index}>
-                        {Array.from({ length: 23 }).map((__, cell) => (
+                        {Array.from({ length: 25 }).map((__, cell) => (
                           <TableCell key={cell}><Skeleton className="h-4 w-full" /></TableCell>
                         ))}
                       </TableRow>
                     ))
                   : filteredItems.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <PhotoThumb url={item.foto_url} />
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">{item.titolo || item.nome_oggetto || "—"}</TableCell>
                         <TableCell>{item.posizione_inventario ?? "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="border-border bg-secondary/40">{item.stato_prodotto || "—"}</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.nome_oggetto ?? "—"}</TableCell>
+                        <TableCell>{item.nome_oggetto ?? "—"}</TableCell>
                         <TableCell>{formatDate(item.data_acquisto)}</TableCell>
                         <TableCell>{item.fonte_acquisto ?? "—"}</TableCell>
                         <TableCell className="num">{eur(item.costo_acquisto)}</TableCell>
