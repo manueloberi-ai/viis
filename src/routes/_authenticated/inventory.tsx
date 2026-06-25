@@ -347,6 +347,15 @@ function InventoryPage() {
       toast.error("Controlla i campi obbligatori (spunta V)", {
         description: `${Object.keys(fieldErrors).length} campo/i da correggere`,
       });
+      // Focus the first checked field that errored
+      const firstKey = CHECKED_KEYS.find((k) => fieldErrors[k]);
+      if (firstKey) {
+        requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`[data-field="${firstKey}"] input, [data-field="${firstKey}"] textarea, [data-field="${firstKey}"] button[role="combobox"]`);
+          el?.focus();
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
       return;
     }
     setErrors({});
