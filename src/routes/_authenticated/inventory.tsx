@@ -1,21 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Boxes,
-  CalendarDays,
-  Euro,
-  MapPin,
-  PackagePlus,
-  Pencil,
-  Save,
-  Search,
-  Sparkles,
-  Trash2,
-  Truck,
-} from "lucide-react";
+import { Boxes, Euro, PackagePlus, Pencil, Save, Search, Sparkles, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
