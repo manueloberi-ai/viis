@@ -296,12 +296,14 @@ function InventoryPage() {
   const openCreate = () => {
     setEditing(null);
     setForm(emptyForm);
+    setErrors({});
     setOpen(true);
   };
 
   const openEdit = (item: InventoryItem) => {
     setEditing(item);
     setForm(formFromItem(item));
+    setErrors({});
     setOpen(true);
   };
 
@@ -319,8 +321,30 @@ function InventoryPage() {
       tasse: stringifyNumber(template.tasse),
       mese_vendita: template.mese_vendita ?? prev.mese_vendita,
     }));
+    setErrors({});
     setOpen(true);
     toast.success("Campi spuntati applicati al form");
+  };
+
+  const handleSubmit = () => {
+    const checkedValues = Object.fromEntries(
+      CHECKED_KEYS.map((key) => [key, form[key]]),
+    ) as Record<(typeof CHECKED_KEYS)[number], string>;
+    const result = checkedSchema.safeParse(checkedValues);
+    if (!result.success) {
+      const fieldErrors: CheckedErrors = {};
+      for (const issue of result.error.issues) {
+        const key = issue.path[0] as (typeof CHECKED_KEYS)[number] | undefined;
+        if (key && !fieldErrors[key]) fieldErrors[key] = issue.message;
+      }
+      setErrors(fieldErrors);
+      toast.error("Controlla i campi obbligatori (spunta V)", {
+        description: `${Object.keys(fieldErrors).length} campo/i da correggere`,
+      });
+      return;
+    }
+    setErrors({});
+    saveMutation.mutate(form);
   };
 
   return (
