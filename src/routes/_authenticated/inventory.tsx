@@ -2,8 +2,42 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Boxes, Euro, PackagePlus, Pencil, Save, Search, Sparkles, Trash2 } from "lucide-react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+
+const requiredString = (label: string) =>
+  z.string().trim().min(1, `${label} è obbligatorio`).max(200, `${label} troppo lungo (max 200)`);
+const requiredNumber = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} è obbligatorio`)
+    .refine((v) => {
+      const n = Number(v.replace(",", "."));
+      return Number.isFinite(n);
+    }, `${label} deve essere un numero valido`)
+    .refine((v) => Number(v.replace(",", ".")) >= 0, `${label} non può essere negativo`);
+const requiredDate = (label: string) =>
+  z
+    .string()
+    .min(1, `${label} è obbligatorio`)
+    .refine((v) => !Number.isNaN(new Date(v).getTime()), `${label} non è una data valida`);
+
+const checkedSchema = z.object({
+  stato_prodotto: requiredString("Stato prodotto"),
+  nome_oggetto: requiredString("Nome oggetto"),
+  categoria_prodotto: requiredString("Categoria"),
+  data_vendita: requiredDate("Data vendita"),
+  prezzo_vendita_valore: requiredNumber("Prezzo vendita"),
+  spedizione: requiredString("Spedizione"),
+  costo_spedizione: requiredNumber("Costo spedizione"),
+  destinazione: requiredString("Destinazione"),
+  tasse: requiredNumber("Tasse"),
+  mese_vendita: requiredString("Mese vendita"),
+});
+
+type CheckedErrors = Partial<Record<(typeof CHECKED_KEYS)[number], string>>;
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
