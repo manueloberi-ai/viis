@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Euro, PackagePlus, Pencil, Save, Search, Sparkles, Trash2 } from "lucide-react";
+import { Boxes, Euro, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -102,6 +102,9 @@ type FormState = {
   mese_vendita: string;
   ricavi_netti: string;
   soldi_persi: string;
+  titolo: string;
+  descrizione: string;
+  foto_url: string;
 };
 
 const STATO_OPTIONS = [
@@ -172,6 +175,9 @@ const emptyForm: FormState = {
   mese_vendita: "",
   ricavi_netti: "",
   soldi_persi: "",
+  titolo: "",
+  descrizione: "",
+  foto_url: "",
 };
 
 function InventoryPage() {
@@ -273,8 +279,11 @@ function InventoryPage() {
       setForm(emptyForm);
       setErrors({});
     },
-    onError: (error: Error) => {
-      toast.error("Salvataggio non riuscito", { description: error.message });
+    onError: (error: unknown) => {
+      const err = error as { message?: string; code?: string; details?: string; hint?: string };
+      const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
+      console.error("[inventory] save failed", err);
+      toast.error("Salvataggio non riuscito", { description: desc || "Errore sconosciuto da Supabase" });
     },
   });
 
@@ -341,6 +350,15 @@ function InventoryPage() {
       toast.error("Controlla i campi obbligatori (spunta V)", {
         description: `${Object.keys(fieldErrors).length} campo/i da correggere`,
       });
+      // Focus the first checked field that errored
+      const firstKey = CHECKED_KEYS.find((k) => fieldErrors[k]);
+      if (firstKey) {
+        requestAnimationFrame(() => {
+          const el = document.querySelector<HTMLElement>(`[data-field="${firstKey}"] input, [data-field="${firstKey}"] textarea, [data-field="${firstKey}"] button[role="combobox"]`);
+          el?.focus();
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
       return;
     }
     setErrors({});
@@ -390,6 +408,8 @@ function InventoryPage() {
             <Table className="min-w-[1480px]">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[72px]">Foto</TableHead>
+                  <TableHead>Titolo</TableHead>
                   <TableHead>Posizione</TableHead>
                   <TableHead>Stato prodotto</TableHead>
                   <TableHead>Nome oggetto</TableHead>
@@ -419,18 +439,22 @@ function InventoryPage() {
                 {inventoryQuery.isLoading
                   ? Array.from({ length: 6 }).map((_, index) => (
                       <TableRow key={index}>
-                        {Array.from({ length: 23 }).map((__, cell) => (
+                        {Array.from({ length: 25 }).map((__, cell) => (
                           <TableCell key={cell}><Skeleton className="h-4 w-full" /></TableCell>
                         ))}
                       </TableRow>
                     ))
                   : filteredItems.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>
+                          <PhotoThumb url={item.foto_url} />
+                        </TableCell>
+                        <TableCell className="font-medium text-foreground">{item.titolo || item.nome_oggetto || "—"}</TableCell>
                         <TableCell>{item.posizione_inventario ?? "—"}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="border-border bg-secondary/40">{item.stato_prodotto || "—"}</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{item.nome_oggetto ?? "—"}</TableCell>
+                        <TableCell>{item.nome_oggetto ?? "—"}</TableCell>
                         <TableCell>{formatDate(item.data_acquisto)}</TableCell>
                         <TableCell>{item.fonte_acquisto ?? "—"}</TableCell>
                         <TableCell className="num">{eur(item.costo_acquisto)}</TableCell>
@@ -470,7 +494,7 @@ function InventoryPage() {
                     ))}
                 {!inventoryQuery.isLoading && filteredItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={23} className="py-12 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={25} className="py-12 text-center text-sm text-muted-foreground">
                       Nessun articolo trovato con questi filtri.
                     </TableCell>
                   </TableRow>
@@ -532,9 +556,40 @@ function InventoryPage() {
             </DialogDescription>
           </DialogHeader>
 
+          <fieldset disabled={saveMutation.isPending} className="contents">
+          {/* Sezione Annuncio (per modulo Pubblicatore) */}
+          <div className="rounded-lg border border-border bg-background/40 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <div className="text-sm font-semibold">Annuncio marketplace</div>
+                <div className="text-xs text-muted-foreground">Dati ottimizzati per il futuro modulo Pubblicatore.</div>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-[200px_minmax(0,1fr)]">
+              <PhotoUploadField
+                value={form.foto_url}
+                onChange={(value) => setForm((prev) => ({ ...prev, foto_url: value }))}
+              />
+              <div className="space-y-4">
+                <Field label="Titolo annuncio">
+                  <Input value={form.titolo} onChange={bind(setForm, "titolo")} placeholder="Es. Pokémon Smeraldo GBA originale ITA" />
+                </Field>
+                <Field label="Descrizione annuncio">
+                  <Textarea
+                    value={form.descrizione}
+                    onChange={bind(setForm, "descrizione")}
+                    className="min-h-32"
+                    placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
-            <Field label="Stato prodotto" error={errors.stato_prodotto}>
+            <Field label="Stato prodotto" error={errors.stato_prodotto} fieldKey="stato_prodotto">
               <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
                 <SelectContent>
@@ -542,11 +597,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Nome oggetto" error={errors.nome_oggetto}><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
+            <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
             <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
-            <Field label="Categoria" error={errors.categoria_prodotto}>
+            <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
                 <SelectContent>
@@ -555,8 +610,8 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita" error={errors.data_vendita}><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
-            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore}><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
@@ -565,7 +620,7 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Spedizione" error={errors.spedizione}>
+            <Field label="Spedizione" error={errors.spedizione} fieldKey="spedizione">
               <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Metodo spedizione" /></SelectTrigger>
                 <SelectContent>
@@ -573,9 +628,9 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Costo spedizione" error={errors.costo_spedizione}><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
+            <Field label="Costo spedizione" error={errors.costo_spedizione} fieldKey="costo_spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
             <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
-            <Field label="Destinazione" error={errors.destinazione}>
+            <Field label="Destinazione" error={errors.destinazione} fieldKey="destinazione">
               <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
                 <SelectContent>
@@ -583,11 +638,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Tasse" error={errors.tasse}><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
+            <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita}><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
@@ -602,12 +657,13 @@ function InventoryPage() {
               ))}
             </div>
           </div>
+          </fieldset>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saveMutation.isPending}>Annulla</Button>
             <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               <Save className="h-4 w-4" />
-              {saveMutation.isPending ? "Salvataggio..." : "Salva articolo"}
+              {saveMutation.isPending ? "Salvataggio..." : editing ? "Salva modifiche" : "Salva articolo"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -628,10 +684,10 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children, error }: { label: string; children: ReactNode; error?: string }) {
+function Field({ label, children, error, fieldKey }: { label: string; children: ReactNode; error?: string; fieldKey?: string }) {
   const checked = Object.values(CHECKED_LABELS).includes(label);
   return (
-    <label className="space-y-2">
+    <label className="space-y-2" data-field={fieldKey}>
       <div className="flex items-center gap-2 text-sm font-medium">
         <span>{label}</span>
         {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
@@ -641,6 +697,53 @@ function Field({ label, children, error }: { label: string; children: ReactNode;
       </div>
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
+  );
+}
+
+function PhotoThumb({ url }: { url: string | null }) {
+  if (!url) {
+    return (
+      <div className="grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground/60">
+        <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className="h-12 w-12 rounded-lg border border-border object-cover"
+      onError={(e) => {
+        const el = e.currentTarget as HTMLImageElement;
+        el.replaceWith(Object.assign(document.createElement("div"), { className: "grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground/60", innerHTML: "" }));
+      }}
+    />
+  );
+}
+
+function PhotoUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-medium">Foto principale</div>
+      <div className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-background/40 transition-colors hover:border-primary/50 hover:bg-primary/5">
+        {value ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={value} alt="Anteprima" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+        ) : (
+          <div className="flex flex-col items-center gap-2 px-4 text-center text-xs text-muted-foreground">
+            <UploadCloud className="h-6 w-6 text-muted-foreground/70" />
+            <div className="font-medium text-foreground">Incolla URL immagine</div>
+            <div>JPG, PNG o WebP — preview live qui sotto</div>
+          </div>
+        )}
+      </div>
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="https://…/foto.jpg"
+        inputMode="url"
+      />
+    </div>
   );
 }
 
@@ -668,6 +771,9 @@ function formFromItem(item: InventoryItem): FormState {
     mese_vendita: item.mese_vendita ?? "",
     ricavi_netti: stringifyNumber(item.ricavi_netti),
     soldi_persi: stringifyNumber(item.soldi_persi),
+    titolo: item.titolo ?? "",
+    descrizione: item.descrizione ?? "",
+    foto_url: item.foto_url ?? "",
   };
 }
 
@@ -697,6 +803,9 @@ function buildItemPayload(form: FormState, userId: string): TablesInsert<"invent
     ricavi_netti: numberOrNull(form.ricavi_netti),
     soldi_persi: numberOrNull(form.soldi_persi),
     campi_spuntati: buildCheckedJson(form),
+    titolo: emptyToNull(form.titolo),
+    descrizione: emptyToNull(form.descrizione),
+    foto_url: emptyToNull(form.foto_url),
   };
 }
 
