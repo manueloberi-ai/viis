@@ -408,6 +408,8 @@ function InventoryPage() {
             <Table className="min-w-[1480px]">
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[72px]">Foto</TableHead>
+                  <TableHead>Titolo</TableHead>
                   <TableHead>Posizione</TableHead>
                   <TableHead>Stato prodotto</TableHead>
                   <TableHead>Nome oggetto</TableHead>
