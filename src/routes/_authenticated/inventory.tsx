@@ -102,6 +102,9 @@ type FormState = {
   mese_vendita: string;
   ricavi_netti: string;
   soldi_persi: string;
+  titolo: string;
+  descrizione: string;
+  foto_url: string;
 };
 
 const STATO_OPTIONS = [
