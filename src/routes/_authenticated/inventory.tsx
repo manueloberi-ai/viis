@@ -550,9 +550,40 @@ function InventoryPage() {
             </DialogDescription>
           </DialogHeader>
 
+          <fieldset disabled={saveMutation.isPending} className="contents">
+          {/* Sezione Annuncio (per modulo Pubblicatore) */}
+          <div className="rounded-lg border border-border bg-background/40 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <div>
+                <div className="text-sm font-semibold">Annuncio marketplace</div>
+                <div className="text-xs text-muted-foreground">Dati ottimizzati per il futuro modulo Pubblicatore.</div>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-[200px_minmax(0,1fr)]">
+              <PhotoUploadField
+                value={form.foto_url}
+                onChange={(value) => setForm((prev) => ({ ...prev, foto_url: value }))}
+              />
+              <div className="space-y-4">
+                <Field label="Titolo annuncio">
+                  <Input value={form.titolo} onChange={bind(setForm, "titolo")} placeholder="Es. Pokémon Smeraldo GBA originale ITA" />
+                </Field>
+                <Field label="Descrizione annuncio">
+                  <Textarea
+                    value={form.descrizione}
+                    onChange={bind(setForm, "descrizione")}
+                    className="min-h-32"
+                    placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
+                  />
+                </Field>
+              </div>
+            </div>
+          </div>
+
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
-            <Field label="Stato prodotto" error={errors.stato_prodotto}>
+            <Field label="Stato prodotto" error={errors.stato_prodotto} fieldKey="stato_prodotto">
               <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
                 <SelectContent>
@@ -560,11 +591,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Nome oggetto" error={errors.nome_oggetto}><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
+            <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
             <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
-            <Field label="Categoria" error={errors.categoria_prodotto}>
+            <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
                 <SelectContent>
@@ -573,8 +604,8 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita" error={errors.data_vendita}><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
-            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore}><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
@@ -583,7 +614,7 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Spedizione" error={errors.spedizione}>
+            <Field label="Spedizione" error={errors.spedizione} fieldKey="spedizione">
               <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Metodo spedizione" /></SelectTrigger>
                 <SelectContent>
@@ -591,9 +622,9 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Costo spedizione" error={errors.costo_spedizione}><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
+            <Field label="Costo spedizione" error={errors.costo_spedizione} fieldKey="costo_spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
             <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
-            <Field label="Destinazione" error={errors.destinazione}>
+            <Field label="Destinazione" error={errors.destinazione} fieldKey="destinazione">
               <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
                 <SelectContent>
@@ -601,11 +632,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Tasse" error={errors.tasse}><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
+            <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita}><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
@@ -620,12 +651,13 @@ function InventoryPage() {
               ))}
             </div>
           </div>
+          </fieldset>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Annulla</Button>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={saveMutation.isPending}>Annulla</Button>
             <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               <Save className="h-4 w-4" />
-              {saveMutation.isPending ? "Salvataggio..." : "Salva articolo"}
+              {saveMutation.isPending ? "Salvataggio..." : editing ? "Salva modifiche" : "Salva articolo"}
             </Button>
           </DialogFooter>
         </DialogContent>
