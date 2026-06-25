@@ -14,7 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      inventory_items: {
+        Row: {
+          categoria: string | null
+          codice_tracciamento: string | null
+          costo_acquisto: number
+          costo_spedizione: number | null
+          created_at: string
+          data_acquisto: string | null
+          descrizione: string | null
+          fee_piattaforma: number | null
+          foto_url: string | null
+          id: string
+          nome: string
+          note: string | null
+          piattaforma: string | null
+          prezzo_vendita: number | null
+          stato: string
+          titolo: string | null
+          updated_at: string
+          user_id: string
+          zona_acquisto: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          codice_tracciamento?: string | null
+          costo_acquisto?: number
+          costo_spedizione?: number | null
+          created_at?: string
+          data_acquisto?: string | null
+          descrizione?: string | null
+          fee_piattaforma?: number | null
+          foto_url?: string | null
+          id?: string
+          nome: string
+          note?: string | null
+          piattaforma?: string | null
+          prezzo_vendita?: number | null
+          stato?: string
+          titolo?: string | null
+          updated_at?: string
+          user_id: string
+          zona_acquisto?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          codice_tracciamento?: string | null
+          costo_acquisto?: number
+          costo_spedizione?: number | null
+          created_at?: string
+          data_acquisto?: string | null
+          descrizione?: string | null
+          fee_piattaforma?: number | null
+          foto_url?: string | null
+          id?: string
+          nome?: string
+          note?: string | null
+          piattaforma?: string | null
+          prezzo_vendita?: number | null
+          stato?: string
+          titolo?: string | null
+          updated_at?: string
+          user_id?: string
+          zona_acquisto?: string | null
+        }
+        Relationships: []
+      }
+      platform_accounts: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          platform: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          platform?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          plan: string
+          telegram_notifications: boolean
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          plan?: string
+          telegram_notifications?: boolean
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          plan?: string
+          telegram_notifications?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
