@@ -674,6 +674,9 @@ function formFromItem(item: InventoryItem): FormState {
     mese_vendita: item.mese_vendita ?? "",
     ricavi_netti: stringifyNumber(item.ricavi_netti),
     soldi_persi: stringifyNumber(item.soldi_persi),
+    titolo: item.titolo ?? "",
+    descrizione: item.descrizione ?? "",
+    foto_url: item.foto_url ?? "",
   };
 }
 
