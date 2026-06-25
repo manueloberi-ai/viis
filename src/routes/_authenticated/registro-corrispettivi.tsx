@@ -165,7 +165,7 @@ function RegistroCorrispettiviPage() {
         r.categoria ?? "—",
         r.piattaforma ?? "—",
         eur(r.prezzo),
-        eur(r.spedizione),
+        r.spedizione > 0 ? eur(r.spedizione) : "—",
         eur(r.totale),
       ]),
       headStyles: { fillColor: [26, 29, 38], textColor: 255, fontStyle: "bold" },
@@ -324,7 +324,7 @@ function RegistroCorrispettiviPage() {
                     </TableCell>
                     <TableCell>{r.piattaforma ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{eur(r.prezzo)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{eur(r.spedizione)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{r.spedizione > 0 ? eur(r.spedizione) : "—"}</TableCell>
                     <TableCell className="text-right tabular-nums font-bold text-emerald-400">{eur(r.totale)}</TableCell>
                     <TableCell className="max-w-[220px] truncate text-muted-foreground">{r.note ?? "—"}</TableCell>
                   </TableRow>
