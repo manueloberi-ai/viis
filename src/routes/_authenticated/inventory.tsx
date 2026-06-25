@@ -555,8 +555,8 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
-            <Field label="Prezzo vendita"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita}><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore}><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
@@ -565,7 +565,7 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Spedizione">
+            <Field label="Spedizione" error={errors.spedizione}>
               <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Metodo spedizione" /></SelectTrigger>
                 <SelectContent>
@@ -573,9 +573,9 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Costo spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
+            <Field label="Costo spedizione" error={errors.costo_spedizione}><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
             <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
-            <Field label="Destinazione">
+            <Field label="Destinazione" error={errors.destinazione}>
               <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
                 <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
                 <SelectContent>
@@ -583,11 +583,11 @@ function InventoryPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
+            <Field label="Tasse" error={errors.tasse}><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita}><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
