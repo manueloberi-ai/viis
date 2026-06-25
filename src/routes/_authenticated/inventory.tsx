@@ -180,6 +180,7 @@ function InventoryPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [errors, setErrors] = useState<CheckedErrors>({});
 
   const inventoryQuery = useQuery({
     queryKey: ["inventory-items"],
