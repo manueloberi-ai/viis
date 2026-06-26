@@ -38,9 +38,6 @@ const STORAGE_KEY = "viis:annunci:state";
 const MAX_PHOTOS = 20;
 const BUCKET = "ad-photos";
 
-const PLATFORM_BY_NAME: Record<string, PlatformKey> = Object.fromEntries(
-  PLATFORM_LIST.map((p) => [p.name, p.key]),
-) as Record<string, PlatformKey>;
 
 function readMap(v: unknown): PlatformMap {
   if (v && typeof v === "object" && !Array.isArray(v)) return v as PlatformMap;
