@@ -79,6 +79,8 @@ export const Route = createFileRoute("/_authenticated/inventory")({
 type InventoryItem = Tables<"inventory_items">;
 type TemplateRow = Tables<"inventory_template_fields">;
 
+type PlatformMap = Record<string, string>;
+
 type FormState = {
   posizione_inventario: string;
   stato_prodotto: string;
@@ -105,6 +107,8 @@ type FormState = {
   titolo: string;
   descrizione: string;
   foto_url: string;
+  titoli_piattaforma: PlatformMap;
+  descrizioni_piattaforma: PlatformMap;
 };
 
 const STATO_OPTIONS = [
@@ -178,6 +182,8 @@ const emptyForm: FormState = {
   titolo: "",
   descrizione: "",
   foto_url: "",
+  titoli_piattaforma: {},
+  descrizioni_piattaforma: {},
 };
 
 function InventoryPage() {
