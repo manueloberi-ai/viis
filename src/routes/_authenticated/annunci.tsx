@@ -748,9 +748,31 @@ function AnnunciPage() {
             <Trash2 className="h-4 w-4" />
             Elimina
           </Button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importCsv.mutate(f);
+              if (e.target) e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={importCsv.isPending}
+            title="Importa annunci da un file CSV (colonne: title, description, platform, inventory_id, photos)"
+          >
+            <FileUp className="h-4 w-4" />
+            {importCsv.isPending ? "Importazione..." : "Importa CSV"}
+          </Button>
           <Button onClick={() => saveAd.mutate()} disabled={saveAd.isPending}>
             <Save className="h-4 w-4" />
-            {saveAd.isPending ? "Salvataggio..." : "Salva come bozza"}
+            {saveAd.isPending
+              ? "Salvataggio..."
+              : currentAdId ? "Aggiorna bozza" : "Salva come bozza"}
           </Button>
         </div>
       </div>
