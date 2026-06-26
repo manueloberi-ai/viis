@@ -128,8 +128,51 @@ const CATEGORIA_OPTIONS = [
   "Altro",
 ] as const;
 
-const DESTINAZIONE_OPTIONS = ["Italia", "UE", "Extra UE", "Ritiro a mano"] as const;
-const SPEDIZIONE_OPTIONS = ["Posta 1", "Piego di libri", "Corriere", "Locker", "Ritiro"] as const;
+const DESTINAZIONE_OPTIONS = [
+  "Italia",
+  "UE",
+  "Europa Continentale",
+  "Extra UE",
+  "Asia",
+  "America Latina",
+  "Oceania",
+] as const;
+const SPEDIZIONE_OPTIONS = [
+  "Poste Italiane",
+  "InPost (Mondial Relay estero)",
+  "BRT (DPD estero)",
+  "UPS",
+  "DHL",
+  "FedEx",
+  "GLS",
+  "TNT",
+  "SDA",
+  "Nexive",
+  "Amazon Logistics",
+  "Corriere generico",
+  "Posta 1",
+  "Piego di libri",
+  "Locker",
+] as const;
+const FONTE_ACQUISTO_OPTIONS = [
+  "Vinted",
+  "eBay",
+  "Wallapop",
+  "Subito",
+  "Cardmarket",
+  "Facebook Marketplace",
+  "WhatsApp",
+  "Cex",
+  "Gamelife",
+  "Mercatino",
+  "Fiere",
+  "Transazione privata",
+  "Scambio a mano",
+  "Amici e parenti",
+  "Gruppi",
+  "Discord",
+  "Altro",
+] as const;
 const CHECKED_KEYS = [
   "stato_prodotto",
   "nome_oggetto",
