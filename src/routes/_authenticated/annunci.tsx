@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
-  MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus,
+  MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
+  ChevronLeft, ChevronRight, ArrowUpDown,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import { optimizeListing } from "@/lib/ai.functions";
