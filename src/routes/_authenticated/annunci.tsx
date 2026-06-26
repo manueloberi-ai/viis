@@ -41,7 +41,15 @@ type Ad = Tables<"ads">;
 type PlatformMap = Record<string, string>;
 
 const STORAGE_KEY = "viis:annunci:state";
-const MAX_PHOTOS = 20;
+// Per-platform photo limits (Cardmarket non specificato → fallback 20).
+const PHOTO_LIMITS: Record<PlatformKey, number> = {
+  vinted: 20,
+  ebay: 24,
+  subito: 6,
+  wallapop: 10,
+  cardmarket: 20,
+};
+const MAX_PHOTOS_ABS = Math.max(...Object.values(PHOTO_LIMITS));
 const BUCKET = "ad-photos";
 const PAGE_SIZE = 8;
 const UPLOAD_TIMEOUT_MS = 30_000;
