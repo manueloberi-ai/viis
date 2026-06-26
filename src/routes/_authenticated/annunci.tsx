@@ -169,7 +169,7 @@ function AnnunciPage() {
   // Filters for the ads list.
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [scopeAll, setScopeAll] = useState(false); // false = solo articolo corrente
+  const [scopeAll, setScopeAll] = useState(true); // default: cerca in tutti gli annunci
   const [platformFilter, setPlatformFilter] = useState<"all" | PlatformKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
   const [page, setPage] = useState(0);
@@ -655,12 +655,20 @@ function AnnunciPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Megaphone className="h-6 w-6 text-primary" /> Annunci
+            <Megaphone className="h-6 w-6 text-primary shrink-0" />
+            <span className="truncate">
+              {(titoli[platform] ?? "").trim() || "Annunci"}
+            </span>
+            <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary shrink-0">
+              {PLATFORMS[platform].name}
+            </Badge>
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Foto, titolo e descrizioni — ottimizzati con IA per ogni piattaforma.
+          <p className="text-sm text-muted-foreground truncate">
+            {titleVal
+              ? `${titleVal.length}/${limit} caratteri · cambia piattaforma per vedere l'altro titolo`
+              : "Foto, titolo e descrizioni — ottimizzati con IA per ogni piattaforma."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

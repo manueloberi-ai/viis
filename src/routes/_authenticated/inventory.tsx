@@ -128,8 +128,51 @@ const CATEGORIA_OPTIONS = [
   "Altro",
 ] as const;
 
-const DESTINAZIONE_OPTIONS = ["Italia", "UE", "Extra UE", "Ritiro a mano"] as const;
-const SPEDIZIONE_OPTIONS = ["Posta 1", "Piego di libri", "Corriere", "Locker", "Ritiro"] as const;
+const DESTINAZIONE_OPTIONS = [
+  "Italia",
+  "UE",
+  "Europa Continentale",
+  "Extra UE",
+  "Asia",
+  "America Latina",
+  "Oceania",
+] as const;
+const SPEDIZIONE_OPTIONS = [
+  "Poste Italiane",
+  "InPost (Mondial Relay estero)",
+  "BRT (DPD estero)",
+  "UPS",
+  "DHL",
+  "FedEx",
+  "GLS",
+  "TNT",
+  "SDA",
+  "Nexive",
+  "Amazon Logistics",
+  "Corriere generico",
+  "Posta 1",
+  "Piego di libri",
+  "Locker",
+] as const;
+const FONTE_ACQUISTO_OPTIONS = [
+  "Vinted",
+  "eBay",
+  "Wallapop",
+  "Subito",
+  "Cardmarket",
+  "Facebook Marketplace",
+  "WhatsApp",
+  "Cex",
+  "Gamelife",
+  "Mercatino",
+  "Fiere",
+  "Transazione privata",
+  "Scambio a mano",
+  "Amici e parenti",
+  "Gruppi",
+  "Discord",
+  "Altro",
+] as const;
 const CHECKED_KEYS = [
   "stato_prodotto",
   "nome_oggetto",
@@ -185,6 +228,16 @@ const emptyForm: FormState = {
   titoli_piattaforma: {},
   descrizioni_piattaforma: {},
 };
+
+const MESI_IT = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+function computeMeseVendita(isoDate: string): string {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${MESI_IT[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 function InventoryPage() {
   const qc = useQueryClient();
@@ -622,7 +675,14 @@ function InventoryPage() {
             </Field>
             <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
-            <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
+            <Field label="Fonte acquisto">
+              <Select value={form.fonte_acquisto} onValueChange={(value) => setForm((prev) => ({ ...prev, fonte_acquisto: value }))}>
+                <SelectTrigger><SelectValue placeholder="Seleziona fonte" /></SelectTrigger>
+                <SelectContent>
+                  {FONTE_ACQUISTO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
             <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
@@ -633,7 +693,20 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
+              <Input
+                type="date"
+                value={form.data_vendita}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    data_vendita: v,
+                    mese_vendita: v ? computeMeseVendita(v) : "",
+                  }));
+                }}
+              />
+            </Field>
             <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
@@ -665,21 +738,11 @@ function InventoryPage() {
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Auto da Data vendita" /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
 
-          <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
-            <div className="text-sm font-semibold text-primary">Campi con spunta a V</div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {CHECKED_KEYS.map((key) => (
-                <span key={key} className="rounded-md border border-primary/20 px-2 py-1">
-                  {CHECKED_LABELS[key]}
-                </span>
-              ))}
-            </div>
-          </div>
           </fieldset>
 
           <DialogFooter>
@@ -870,7 +933,7 @@ function formFromItem(item: InventoryItem): FormState {
     profitto: stringifyNumber(item.profitto),
     margine_profitto: stringifyNumber(item.margine_profitto),
     mese_acquisto: item.mese_acquisto ?? "",
-    mese_vendita: item.mese_vendita ?? "",
+    mese_vendita: item.mese_vendita ?? (item.data_vendita ? computeMeseVendita(item.data_vendita) : ""),
     ricavi_netti: stringifyNumber(item.ricavi_netti),
     soldi_persi: stringifyNumber(item.soldi_persi),
     titolo: item.titolo ?? "",
