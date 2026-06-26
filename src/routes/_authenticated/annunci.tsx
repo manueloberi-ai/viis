@@ -992,7 +992,7 @@ function AnnunciPage() {
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Le foto vengono salvate solo quando clicchi "Salva annuncio". Trascina per riordinare in arrivo.
+              Le foto vengono salvate solo quando clicchi "Salva come bozza". Trascina per riordinare in arrivo.
             </p>
           </div>
 
