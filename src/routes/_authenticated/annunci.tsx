@@ -582,36 +582,93 @@ function AnnunciPage() {
             </div>
           )}
 
-          {/* Lista bozze esistenti per questo articolo × piattaforma */}
+          {/* Lista bozze con ricerca, filtri, ordinamento, paginazione */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                Bozze su {PLATFORMS[platform].name}
+                Bozze annunci
               </Label>
               <span className="text-[10px] text-muted-foreground tabular-nums">
-                {(adsQuery.data ?? []).length}
+                {adsListQuery.data?.total ?? 0} tot
               </span>
             </div>
-            {adsQuery.isLoading ? (
-              <Skeleton className="h-14 w-full" />
-            ) : (adsQuery.data ?? []).length === 0 ? (
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cerca per titolo…"
+                className="pl-7 h-8 text-xs"
+              />
+            </div>
+
+            {/* Filters row */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <Select value={scopeAll ? "all" : "item"} onValueChange={(v) => setScopeAll(v === "all")}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="item">Solo articolo</SelectItem>
+                  <SelectItem value="all">Tutti gli articoli</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={platformFilter}
+                onValueChange={(v) => setPlatformFilter(v as "all" | PlatformKey)}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte piattaforme</SelectItem>
+                  {PLATFORM_LIST.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort */}
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-8 text-xs">
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_desc">Più recenti</SelectItem>
+                <SelectItem value="updated_asc">Più vecchi</SelectItem>
+                <SelectItem value="title_asc">Titolo A→Z</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {adsListQuery.isLoading || adsListQuery.isFetching ? (
+              <div className="space-y-1.5">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : (adsListQuery.data?.rows ?? []).length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-3 text-[11px] text-muted-foreground">
-                Nessuna bozza salvata. Premi "Salva annuncio" per crearne una.
+                Nessuna bozza per questi filtri.
               </div>
             ) : (
-              <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {(adsQuery.data ?? []).map((a) => {
+              <ul className="space-y-1.5">
+                {adsListQuery.data!.rows.map((a) => {
                   const active = a.id === currentAdId;
                   const updated = a.updated_at
                     ? new Date(a.updated_at).toLocaleString("it-IT", {
                         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                       })
                     : "—";
+                  const pMeta = PLATFORM_LIST.find((p) => p.name === a.platform);
                   return (
                     <li key={a.id}>
                       <button
                         type="button"
-                        onClick={() => setCurrentAdId(a.id)}
+                        onClick={() => {
+                          if (pMeta) setPlatform(pMeta.key);
+                          if (a.inventory_id && a.inventory_id !== selectedId) {
+                            setSelectedId(a.inventory_id);
+                          }
+                          setCurrentAdId(a.id);
+                        }}
                         className={[
                           "w-full rounded-lg border p-2 text-left transition-all",
                           active
@@ -623,15 +680,18 @@ function AnnunciPage() {
                           <span className="truncate text-xs font-medium">
                             {a.generated_title?.trim() || "Senza titolo"}
                           </span>
-                          {active && (
-                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0">
-                              attiva
-                            </Badge>
+                          {pMeta && (
+                            <span
+                              className="rounded px-1 py-0.5 text-[9px] font-bold text-white"
+                              style={{ backgroundColor: pMeta.color }}
+                            >
+                              {pMeta.short}
+                            </span>
                           )}
                         </div>
                         <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
                           <span>{updated}</span>
-                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto</span>
+                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto{active ? " · attiva" : ""}</span>
                         </div>
                       </button>
                     </li>
@@ -639,8 +699,41 @@ function AnnunciPage() {
                 })}
               </ul>
             )}
+
+            {/* Pagination */}
+            {(adsListQuery.data?.total ?? 0) > PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={page === 0 || adsListQuery.isFetching}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  pag. {page + 1} / {Math.max(1, Math.ceil((adsListQuery.data?.total ?? 0) / PAGE_SIZE))}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={
+                    adsListQuery.isFetching ||
+                    (page + 1) * PAGE_SIZE >= (adsListQuery.data?.total ?? 0)
+                  }
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
+
 
 
         {/* Colonna centrale — Foto + Titolo + Descrizione */}
