@@ -20,6 +20,7 @@ import {
   X,
   ReceiptText,
   Megaphone,
+  Images,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
