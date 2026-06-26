@@ -101,11 +101,25 @@ function GalleriaFotoPage() {
   }, [adsQuery.data]);
 
   const filtered = useMemo(() => {
-    const base = platformFilter === "all"
-      ? allPhotos
-      : allPhotos.filter((p) => p.platformKey === platformFilter);
+    const fromTs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
+    const toTs = dateTo ? new Date(dateTo + "T23:59:59").getTime() : null;
+    const base = allPhotos.filter((p) => {
+      if (platformFilter !== "all" && p.platformKey !== platformFilter) return false;
+      if (searchDebounced && !p.adTitle.toLowerCase().includes(searchDebounced)) return false;
+      if (fromTs || toTs) {
+        const t = p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
+        if (fromTs && t < fromTs) return false;
+        if (toTs && t > toTs) return false;
+      }
+      return true;
+    });
     return base.slice(0, GALLERY_LIMIT);
-  }, [allPhotos, platformFilter]);
+  }, [allPhotos, platformFilter, searchDebounced, dateFrom, dateTo]);
+
+  const hasFilters = !!(searchDebounced || dateFrom || dateTo || platformFilter !== "all");
+  const resetFilters = () => {
+    setSearch(""); setSearchDebounced(""); setDateFrom(""); setDateTo(""); setPlatformFilter("all");
+  };
 
   // Resolve signed URLs for storage paths in the visible window.
   useEffect(() => {
