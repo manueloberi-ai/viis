@@ -6,10 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Images, ExternalLink, Copy } from "lucide-react";
+import { Images, ExternalLink, Copy, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import type { Tables } from "@/integrations/supabase/types";
