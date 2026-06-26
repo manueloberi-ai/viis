@@ -683,7 +683,20 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita"><Input type="date" value={form.data_vendita} onChange={bind(setForm, "data_vendita")} /></Field>
+            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
+              <Input
+                type="date"
+                value={form.data_vendita}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    data_vendita: v,
+                    mese_vendita: v ? computeMeseVendita(v) : "",
+                  }));
+                }}
+              />
+            </Field>
             <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
             <Field label="Piattaforma vendita">
               <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
