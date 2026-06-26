@@ -229,6 +229,16 @@ const emptyForm: FormState = {
   descrizioni_piattaforma: {},
 };
 
+const MESI_IT = [
+  "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
+];
+function computeMeseVendita(isoDate: string): string {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${MESI_IT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 function InventoryPage() {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
