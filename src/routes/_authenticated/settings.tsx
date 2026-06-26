@@ -1,20 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   User as UserIcon,
   CreditCard,
   Bell,
   Shield,
-  Sun,
-  Moon,
-  Monitor,
   Pencil,
   Check,
   Download,
   Trash2,
   ExternalLink,
   Crown,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -38,23 +36,14 @@ export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
-type SectionKey = "profilo" | "abbonamento" | "notifiche" | "privacy" | "aspetto";
+type SectionKey = "profilo" | "abbonamento" | "notifiche" | "privacy";
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profilo", label: "Profilo", icon: UserIcon },
   { key: "abbonamento", label: "Abbonamento", icon: CreditCard },
   { key: "notifiche", label: "Notifiche", icon: Bell },
   { key: "privacy", label: "Privacy", icon: Shield },
-  { key: "aspetto", label: "Aspetto", icon: Sun },
 ];
-
-type Theme = "light" | "dark" | "system";
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  root.classList.toggle("dark", isDark);
-}
 
 function SettingsPage() {
   const [section, setSection] = useState<SectionKey>("profilo");
