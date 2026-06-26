@@ -20,8 +20,12 @@ import {
 import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
   MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
-  ChevronLeft, ChevronRight, ArrowUpDown,
+  ChevronLeft, ChevronRight, ArrowUpDown, FileText, ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
@@ -37,7 +41,15 @@ type Ad = Tables<"ads">;
 type PlatformMap = Record<string, string>;
 
 const STORAGE_KEY = "viis:annunci:state";
-const MAX_PHOTOS = 20;
+// Per-platform photo limits (Cardmarket non specificato → fallback 20).
+const PHOTO_LIMITS: Record<PlatformKey, number> = {
+  vinted: 20,
+  ebay: 24,
+  subito: 6,
+  wallapop: 10,
+  cardmarket: 20,
+};
+const MAX_PHOTOS_ABS = Math.max(...Object.values(PHOTO_LIMITS));
 const BUCKET = "ad-photos";
 const PAGE_SIZE = 8;
 const UPLOAD_TIMEOUT_MS = 30_000;
@@ -124,6 +136,7 @@ function AnnunciPage() {
   const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
   const [page, setPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoLimit = PHOTO_LIMITS[platform];
 
   // Debounce search input.
   useEffect(() => {
@@ -222,6 +235,22 @@ function AnnunciPage() {
     },
   });
 
+  // Quick-access "Bozze" menu — most recent drafts across all items × platforms.
+  const draftsMenuQuery = useQuery({
+    queryKey: ["ads", "drafts-menu"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("id, generated_title, platform, inventory_id, photos, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Pick<Ad, "id" | "generated_title" | "platform" | "inventory_id" | "photos" | "updated_at">[];
+    },
+  });
+
+
+
 
   // When the (item, platform) scope changes, auto-load the most recent ad
   // — OR keep the persisted currentAdId if it belongs to this scope.
@@ -319,7 +348,7 @@ function AnnunciPage() {
 
   const saveAd = useMutation({
     mutationFn: async () => {
-      if (photos.length > MAX_PHOTOS) throw new Error(`Massimo ${MAX_PHOTOS} foto`);
+      if (photos.length > photoLimit) throw new Error(`Massimo ${photoLimit} foto`);
       if (!currentAdId) {
         // Upsert behaviour: if no current ad, create one on save.
         const { data: u } = await supabase.auth.getUser();
@@ -414,8 +443,8 @@ function AnnunciPage() {
       toast.error("URL non valido", { description: "Deve iniziare con http(s)://" });
       return;
     }
-    if (photos.length >= MAX_PHOTOS) {
-      toast.error(`Massimo ${MAX_PHOTOS} foto`);
+    if (photos.length >= photoLimit) {
+      toast.error(`Massimo ${photoLimit} foto`);
       return;
     }
     setPhotos((prev) => [...prev, v]);
@@ -426,8 +455,8 @@ function AnnunciPage() {
     mutationFn: async (files: File[]) => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Utente non autenticato");
-      const remaining = MAX_PHOTOS - photos.length;
-      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${MAX_PHOTOS} foto`);
+      const remaining = photoLimit - photos.length;
+      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${photoLimit} foto`);
       const slice = files.slice(0, remaining);
       const paths: string[] = [];
       const failed: string[] = [];
@@ -450,7 +479,7 @@ function AnnunciPage() {
         toast.success(`${paths.length} foto caricate`);
       }
       if (skipped > 0) {
-        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${MAX_PHOTOS} foto` });
+        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${photoLimit} foto` });
       }
       if (failed.length) {
         toast.error(`${failed.length} upload falliti`, {
@@ -515,6 +544,69 @@ function AnnunciPage() {
             <Plus className="h-4 w-4" />
             {newAd.isPending ? "Creazione..." : "Nuovo annuncio"}
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileText className="h-4 w-4" />
+                Bozze
+                {(draftsMenuQuery.data?.length ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {draftsMenuQuery.data!.length}
+                  </Badge>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+              <DropdownMenuLabel>Bozze recenti</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {(draftsMenuQuery.data ?? []).length === 0 && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  Nessuna bozza salvata.
+                </div>
+              )}
+              {(draftsMenuQuery.data ?? []).map((d) => {
+                const pMeta = PLATFORM_LIST.find((p) => p.name === d.platform);
+                const inv = items.find((it) => it.id === d.inventory_id);
+                const updated = d.updated_at
+                  ? new Date(d.updated_at).toLocaleString("it-IT", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })
+                  : "—";
+                return (
+                  <DropdownMenuItem
+                    key={d.id}
+                    className="flex flex-col items-start gap-0.5 py-2"
+                    onSelect={() => {
+                      if (pMeta) setPlatform(pMeta.key);
+                      if (d.inventory_id) setSelectedId(d.inventory_id);
+                      setCurrentAdId(d.id);
+                    }}
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="truncate text-xs font-medium">
+                        {d.generated_title?.trim() || "Senza titolo"}
+                      </span>
+                      {pMeta && (
+                        <span
+                          className="rounded px-1 py-0.5 text-[9px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: pMeta.color }}
+                        >
+                          {pMeta.short}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="truncate">{inv?.titolo || inv?.nome_oggetto || "—"}</span>
+                      <span className="shrink-0">{updated} · {Array.isArray(d.photos) ? d.photos.length : 0} foto</span>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="outline"
             onClick={() => duplicateAd.mutate()}
@@ -534,10 +626,11 @@ function AnnunciPage() {
           </Button>
           <Button onClick={() => saveAd.mutate()} disabled={saveAd.isPending}>
             <Save className="h-4 w-4" />
-            {saveAd.isPending ? "Salvataggio..." : "Salva annuncio"}
+            {saveAd.isPending ? "Salvataggio..." : "Salva come bozza"}
           </Button>
         </div>
       </div>
+
 
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_280px]">
         {/* Colonna sinistra — Associa a inventario */}
@@ -802,8 +895,8 @@ function AnnunciPage() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Foto annuncio
               </Label>
-              <span className={`text-xs tabular-nums ${photos.length > MAX_PHOTOS ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
-                {photos.length}/{MAX_PHOTOS}
+              <span className={`text-xs tabular-nums ${photos.length > photoLimit ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
+                {photos.length}/{photoLimit}
               </span>
             </div>
 
@@ -869,7 +962,7 @@ function AnnunciPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadFiles.isPending || photos.length >= MAX_PHOTOS}
+                disabled={uploadFiles.isPending || photos.length >= photoLimit}
               >
                 <UploadCloud className="h-4 w-4" />
                 {uploadFiles.isPending ? "Upload..." : "Carica file"}
@@ -892,14 +985,14 @@ function AnnunciPage() {
                   variant="outline"
                   size="sm"
                   onClick={addPhotoUrl}
-                  disabled={!photoUrlInput.trim() || photos.length >= MAX_PHOTOS}
+                  disabled={!photoUrlInput.trim() || photos.length >= photoLimit}
                 >
                   <Plus className="h-4 w-4" /> URL
                 </Button>
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Le foto vengono salvate solo quando clicchi "Salva annuncio". Trascina per riordinare in arrivo.
+              Le foto vengono salvate solo quando clicchi "Salva come bozza". Trascina per riordinare in arrivo.
             </p>
           </div>
 
