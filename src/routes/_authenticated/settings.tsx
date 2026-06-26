@@ -78,7 +78,7 @@ function SettingsPage() {
         {section === "abbonamento" && <SubscriptionSection />}
         {section === "notifiche" && <NotificationsSection />}
         {section === "privacy" && <PrivacySection />}
-        {section === "aspetto" && <AppearanceSection />}
+        
       </div>
     </div>
   );
