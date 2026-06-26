@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
-  MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus,
+  MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
+  ChevronLeft, ChevronRight, ArrowUpDown,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import { optimizeListing } from "@/lib/ai.functions";
@@ -37,6 +39,39 @@ type PlatformMap = Record<string, string>;
 const STORAGE_KEY = "viis:annunci:state";
 const MAX_PHOTOS = 20;
 const BUCKET = "ad-photos";
+const PAGE_SIZE = 8;
+const UPLOAD_TIMEOUT_MS = 30_000;
+const UPLOAD_MAX_RETRIES = 3;
+
+type SortKey = "updated_desc" | "updated_asc" | "title_asc";
+
+// Upload a single file with timeout + exponential backoff retry.
+async function uploadWithRetry(path: string, file: File): Promise<void> {
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt < UPLOAD_MAX_RETRIES) {
+    attempt++;
+    try {
+      const upload = supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+      const timeout = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error(`Timeout dopo ${UPLOAD_TIMEOUT_MS / 1000}s`)), UPLOAD_TIMEOUT_MS),
+      );
+      const res = (await Promise.race([upload, timeout])) as { error?: { message?: string } | null };
+      if (res?.error) throw new Error(res.error.message ?? "Upload error");
+      return;
+
+    } catch (e) {
+      lastErr = e;
+      if (attempt >= UPLOAD_MAX_RETRIES) break;
+      // Backoff: 500ms, 1500ms, 3500ms
+      await new Promise((r) => setTimeout(r, 500 * (2 ** attempt - 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Upload fallito");
+}
+
 
 
 function readMap(v: unknown): PlatformMap {
@@ -81,7 +116,26 @@ function AnnunciPage() {
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
+  // Filters for the ads list.
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [scopeAll, setScopeAll] = useState(false); // false = solo articolo corrente
+  const [platformFilter, setPlatformFilter] = useState<"all" | PlatformKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
+  const [page, setPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to first page when filters change.
+  useEffect(() => {
+    setPage(0);
+  }, [searchDebounced, scopeAll, platformFilter, sortKey, selectedId]);
+
 
   // Restore last session AFTER mount to avoid SSR/CSR mismatch.
   useEffect(() => {
@@ -123,9 +177,9 @@ function AnnunciPage() {
     if (!selectedId && items.length > 0) setSelectedId(items[0].id);
   }, [items, selectedId]);
 
-  // All ads for current scope (item × platform) — used for auto-load.
+  // Scoped query (item × current platform) — drives auto-load only.
   const adsQuery = useQuery({
-    queryKey: ["ads", selectedId, PLATFORMS[platform].name],
+    queryKey: ["ads", "scope", selectedId, PLATFORMS[platform].name],
     enabled: !!selectedId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -138,6 +192,36 @@ function AnnunciPage() {
       return (data ?? []) as Ad[];
     },
   });
+
+  // Paginated + filterable list query for the visible drafts list.
+  const adsListQuery = useQuery({
+    queryKey: [
+      "ads", "list",
+      scopeAll ? "all" : selectedId,
+      platformFilter,
+      searchDebounced,
+      sortKey,
+      page,
+    ],
+    enabled: scopeAll || !!selectedId,
+    queryFn: async () => {
+      let q = supabase
+        .from("ads")
+        .select("*", { count: "exact" });
+      if (!scopeAll && selectedId) q = q.eq("inventory_id", selectedId);
+      if (platformFilter !== "all") q = q.eq("platform", PLATFORMS[platformFilter].name);
+      if (searchDebounced) q = q.ilike("generated_title", `%${searchDebounced}%`);
+      if (sortKey === "updated_desc") q = q.order("updated_at", { ascending: false });
+      else if (sortKey === "updated_asc") q = q.order("updated_at", { ascending: true });
+      else q = q.order("generated_title", { ascending: true, nullsFirst: false });
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error, count } = await q.range(from, to);
+      if (error) throw error;
+      return { rows: (data ?? []) as Ad[], total: count ?? 0 };
+    },
+  });
+
 
   // When the (item, platform) scope changes, auto-load the most recent ad
   // — OR keep the persisted currentAdId if it belongs to this scope.
@@ -343,25 +427,40 @@ function AnnunciPage() {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Utente non autenticato");
       const remaining = MAX_PHOTOS - photos.length;
+      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${MAX_PHOTOS} foto`);
       const slice = files.slice(0, remaining);
       const paths: string[] = [];
+      const failed: string[] = [];
       for (const file of slice) {
         const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, file, { cacheControl: "3600", upsert: false });
-        if (error) throw error;
-        paths.push(path);
+        try {
+          await uploadWithRetry(path, file);
+          paths.push(path);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "errore";
+          failed.push(`${file.name} (${msg})`);
+        }
       }
-      return paths;
+      return { paths, failed, skipped: files.length - slice.length };
     },
-    onSuccess: (paths) => {
-      setPhotos((prev) => [...prev, ...paths]);
-      toast.success(`${paths.length} foto caricate`);
+    onSuccess: ({ paths, failed, skipped }) => {
+      if (paths.length) {
+        setPhotos((prev) => [...prev, ...paths]);
+        toast.success(`${paths.length} foto caricate`);
+      }
+      if (skipped > 0) {
+        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${MAX_PHOTOS} foto` });
+      }
+      if (failed.length) {
+        toast.error(`${failed.length} upload falliti`, {
+          description: failed.slice(0, 3).join(" · ") + (failed.length > 3 ? "…" : ""),
+        });
+      }
     },
     onError: (e: Error) => toast.error("Upload fallito", { description: e.message }),
   });
+
 
   const removePhoto = (idx: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
@@ -483,36 +582,93 @@ function AnnunciPage() {
             </div>
           )}
 
-          {/* Lista bozze esistenti per questo articolo × piattaforma */}
+          {/* Lista bozze con ricerca, filtri, ordinamento, paginazione */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                Bozze su {PLATFORMS[platform].name}
+                Bozze annunci
               </Label>
               <span className="text-[10px] text-muted-foreground tabular-nums">
-                {(adsQuery.data ?? []).length}
+                {adsListQuery.data?.total ?? 0} tot
               </span>
             </div>
-            {adsQuery.isLoading ? (
-              <Skeleton className="h-14 w-full" />
-            ) : (adsQuery.data ?? []).length === 0 ? (
+
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Cerca per titolo…"
+                className="pl-7 h-8 text-xs"
+              />
+            </div>
+
+            {/* Filters row */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <Select value={scopeAll ? "all" : "item"} onValueChange={(v) => setScopeAll(v === "all")}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="item">Solo articolo</SelectItem>
+                  <SelectItem value="all">Tutti gli articoli</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={platformFilter}
+                onValueChange={(v) => setPlatformFilter(v as "all" | PlatformKey)}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutte piattaforme</SelectItem>
+                  {PLATFORM_LIST.map((p) => (
+                    <SelectItem key={p.key} value={p.key}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort */}
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-8 text-xs">
+                <ArrowUpDown className="h-3 w-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated_desc">Più recenti</SelectItem>
+                <SelectItem value="updated_asc">Più vecchi</SelectItem>
+                <SelectItem value="title_asc">Titolo A→Z</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {adsListQuery.isLoading || adsListQuery.isFetching ? (
+              <div className="space-y-1.5">
+                {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : (adsListQuery.data?.rows ?? []).length === 0 ? (
               <div className="rounded-lg border border-dashed border-border p-3 text-[11px] text-muted-foreground">
-                Nessuna bozza salvata. Premi "Salva annuncio" per crearne una.
+                Nessuna bozza per questi filtri.
               </div>
             ) : (
-              <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-                {(adsQuery.data ?? []).map((a) => {
+              <ul className="space-y-1.5">
+                {adsListQuery.data!.rows.map((a) => {
                   const active = a.id === currentAdId;
                   const updated = a.updated_at
                     ? new Date(a.updated_at).toLocaleString("it-IT", {
                         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
                       })
                     : "—";
+                  const pMeta = PLATFORM_LIST.find((p) => p.name === a.platform);
                   return (
                     <li key={a.id}>
                       <button
                         type="button"
-                        onClick={() => setCurrentAdId(a.id)}
+                        onClick={() => {
+                          if (pMeta) setPlatform(pMeta.key);
+                          if (a.inventory_id && a.inventory_id !== selectedId) {
+                            setSelectedId(a.inventory_id);
+                          }
+                          setCurrentAdId(a.id);
+                        }}
                         className={[
                           "w-full rounded-lg border p-2 text-left transition-all",
                           active
@@ -524,15 +680,18 @@ function AnnunciPage() {
                           <span className="truncate text-xs font-medium">
                             {a.generated_title?.trim() || "Senza titolo"}
                           </span>
-                          {active && (
-                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0">
-                              attiva
-                            </Badge>
+                          {pMeta && (
+                            <span
+                              className="rounded px-1 py-0.5 text-[9px] font-bold text-white"
+                              style={{ backgroundColor: pMeta.color }}
+                            >
+                              {pMeta.short}
+                            </span>
                           )}
                         </div>
                         <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
                           <span>{updated}</span>
-                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto</span>
+                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto{active ? " · attiva" : ""}</span>
                         </div>
                       </button>
                     </li>
@@ -540,8 +699,41 @@ function AnnunciPage() {
                 })}
               </ul>
             )}
+
+            {/* Pagination */}
+            {(adsListQuery.data?.total ?? 0) > PAGE_SIZE && (
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={page === 0 || adsListQuery.isFetching}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  pag. {page + 1} / {Math.max(1, Math.ceil((adsListQuery.data?.total ?? 0) / PAGE_SIZE))}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={
+                    adsListQuery.isFetching ||
+                    (page + 1) * PAGE_SIZE >= (adsListQuery.data?.total ?? 0)
+                  }
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
+
 
 
         {/* Colonna centrale — Foto + Titolo + Descrizione */}
