@@ -207,12 +207,13 @@ function AnnunciPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => save.reset()} disabled={save.isPending}>
-            <Plus className="h-4 w-4" /> Nuovo annuncio
+          <Button variant="outline" onClick={() => newAd.mutate()} disabled={newAd.isPending}>
+            <Plus className="h-4 w-4" />
+            {newAd.isPending ? "Creazione..." : "Nuovo annuncio"}
           </Button>
-          <Button onClick={() => save.mutate()} disabled={!selected || save.isPending}>
+          <Button onClick={() => saveAd.mutate()} disabled={!currentAdId || saveAd.isPending}>
             <Save className="h-4 w-4" />
-            {save.isPending ? "Salvataggio..." : "Salva annuncio"}
+            {saveAd.isPending ? "Salvataggio..." : "Salva annuncio"}
           </Button>
         </div>
       </div>
