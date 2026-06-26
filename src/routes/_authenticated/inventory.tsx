@@ -665,7 +665,14 @@ function InventoryPage() {
             </Field>
             <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
             <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
-            <Field label="Fonte acquisto"><Input value={form.fonte_acquisto} onChange={bind(setForm, "fonte_acquisto")} /></Field>
+            <Field label="Fonte acquisto">
+              <Select value={form.fonte_acquisto} onValueChange={(value) => setForm((prev) => ({ ...prev, fonte_acquisto: value }))}>
+                <SelectTrigger><SelectValue placeholder="Seleziona fonte" /></SelectTrigger>
+                <SelectContent>
+                  {FONTE_ACQUISTO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </Field>
             <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
             <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
               <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
