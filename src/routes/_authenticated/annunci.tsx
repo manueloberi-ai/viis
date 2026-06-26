@@ -40,9 +40,59 @@ function AnnunciPage() {
   const [titoli, setTitoli] = useState<PlatformMap>({});
   const [descrizioni, setDescrizioni] = useState<PlatformMap>({});
   const [foto, setFoto] = useState("");
+  const [currentAdId, setCurrentAdId] = useState<string | null>(null);
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
+
+  const newAd = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const { data, error } = await supabase
+        .from("ads")
+        .insert({
+          user_id: u.user.id,
+          inventory_id: selectedId,
+          platform: PLATFORMS[platform].name,
+          generated_title: "",
+          generated_description: "",
+          photos: [],
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data.id as string;
+    },
+    onSuccess: (id) => {
+      setCurrentAdId(id);
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success("Nuovo annuncio creato");
+    },
+    onError: (e: Error) => toast.error("Creazione fallita", { description: e.message }),
+  });
+
+  const saveAd = useMutation({
+    mutationFn: async () => {
+      if (!currentAdId) throw new Error("Nessun annuncio attivo: clicca 'Nuovo annuncio'");
+      const { error } = await supabase
+        .from("ads")
+        .update({
+          platform: PLATFORMS[platform].name,
+          inventory_id: selectedId,
+          generated_title: titoli[platform] ?? "",
+          generated_description: descrizioni[platform] ?? "",
+          photos: foto ? [foto] : [],
+        })
+        .eq("id", currentAdId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success("Annuncio aggiornato");
+    },
+    onError: (e: Error) => toast.error("Salvataggio annuncio fallito", { description: e.message }),
+  });
 
   const itemsQuery = useQuery({
     queryKey: ["inventory-items-annunci"],
