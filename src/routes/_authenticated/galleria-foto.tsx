@@ -249,7 +249,7 @@ function GalleriaFotoPage() {
                   )}
                   {p.index === 0 && (
                     <span className="absolute right-1.5 top-1.5 rounded bg-primary/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                      Cover
+                      Prima foto
                     </span>
                   )}
                 </div>
