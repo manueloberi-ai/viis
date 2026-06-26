@@ -19,6 +19,7 @@ import { Route as AuthenticatedPlatformsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
+import { Route as AuthenticatedAnnunciRouteImport } from './routes/_authenticated/annunci'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -70,10 +71,16 @@ const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   path: '/contacts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAnnunciRoute = AuthenticatedAnnunciRouteImport.update({
+  id: '/annunci',
+  path: '/annunci',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/annunci': typeof AuthenticatedAnnunciRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/home': typeof AuthenticatedHomeRoute
   '/inventory': typeof AuthenticatedInventoryRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/annunci': typeof AuthenticatedAnnunciRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/home': typeof AuthenticatedHomeRoute
   '/inventory': typeof AuthenticatedInventoryRoute
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/annunci': typeof AuthenticatedAnnunciRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/annunci'
     | '/contacts'
     | '/home'
     | '/inventory'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/annunci'
     | '/contacts'
     | '/home'
     | '/inventory'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/annunci'
     | '/_authenticated/contacts'
     | '/_authenticated/home'
     | '/_authenticated/inventory'
@@ -221,10 +233,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContactsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/annunci': {
+      id: '/_authenticated/annunci'
+      path: '/annunci'
+      fullPath: '/annunci'
+      preLoaderRoute: typeof AuthenticatedAnnunciRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAnnunciRoute: typeof AuthenticatedAnnunciRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
@@ -235,6 +255,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAnnunciRoute: AuthenticatedAnnunciRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
