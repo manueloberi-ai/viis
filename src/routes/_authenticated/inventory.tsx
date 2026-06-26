@@ -720,16 +720,6 @@ function InventoryPage() {
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
 
-          <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4">
-            <div className="text-sm font-semibold text-primary">Campi con spunta a V</div>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              {CHECKED_KEYS.map((key) => (
-                <span key={key} className="rounded-md border border-primary/20 px-2 py-1">
-                  {CHECKED_LABELS[key]}
-                </span>
-              ))}
-            </div>
-          </div>
           </fieldset>
 
           <DialogFooter>
