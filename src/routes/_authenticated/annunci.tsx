@@ -39,6 +39,39 @@ type PlatformMap = Record<string, string>;
 const STORAGE_KEY = "viis:annunci:state";
 const MAX_PHOTOS = 20;
 const BUCKET = "ad-photos";
+const PAGE_SIZE = 8;
+const UPLOAD_TIMEOUT_MS = 30_000;
+const UPLOAD_MAX_RETRIES = 3;
+
+type SortKey = "updated_desc" | "updated_asc" | "title_asc";
+
+// Upload a single file with timeout + exponential backoff retry.
+async function uploadWithRetry(path: string, file: File): Promise<void> {
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt < UPLOAD_MAX_RETRIES) {
+    attempt++;
+    try {
+      const upload = supabase.storage
+        .from(BUCKET)
+        .upload(path, file, { cacheControl: "3600", upsert: false });
+      const timeout = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error(`Timeout dopo ${UPLOAD_TIMEOUT_MS / 1000}s`)), UPLOAD_TIMEOUT_MS),
+      );
+      const res = await Promise.race([upload, timeout]);
+      // @ts-expect-error - res shape from supabase
+      if (res?.error) throw res.error;
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (attempt >= UPLOAD_MAX_RETRIES) break;
+      // Backoff: 500ms, 1500ms, 3500ms
+      await new Promise((r) => setTimeout(r, 500 * (2 ** attempt - 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Upload fallito");
+}
+
 
 
 function readMap(v: unknown): PlatformMap {
