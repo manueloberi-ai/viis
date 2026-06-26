@@ -21,6 +21,7 @@ import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
   MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
   ChevronLeft, ChevronRight, ArrowUpDown, FileText, ChevronDown,
+  FileUp,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -113,6 +114,43 @@ function isHttpUrl(s: string) {
   return /^https?:\/\//i.test(s);
 }
 
+// Minimal RFC4180-ish CSV parser (comma or semicolon, quoted fields, CRLF).
+function parseCsv(text: string): Array<Record<string, string>> {
+  const src = text.replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let sep: "," | ";" | null = null;
+  const firstLine = src.split(/\r?\n/, 1)[0] ?? "";
+  sep = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === sep) { cur.push(field); field = ""; }
+      else if (c === "\n") { cur.push(field); rows.push(cur); cur = []; field = ""; }
+      else if (c === "\r") { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length || cur.length) { cur.push(field); rows.push(cur); }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
+  return rows.slice(1)
+    .filter((r) => r.some((v) => v && v.trim().length > 0))
+    .map((r) => {
+      const o: Record<string, string> = {};
+      headers.forEach((h, idx) => { o[h] = (r[idx] ?? "").trim(); });
+      return o;
+    });
+}
+
 function AnnunciPage() {
   const qc = useQueryClient();
   // Hydration-safe defaults — restore from localStorage after mount.
@@ -136,6 +174,8 @@ function AnnunciPage() {
   const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
   const [page, setPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const prevPlatformRef = useRef<PlatformKey>("ebay");
   const photoLimit = PHOTO_LIMITS[platform];
 
   // Debounce search input.
@@ -495,6 +535,90 @@ function AnnunciPage() {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // CSV import — bulk insert ads from a CSV file.
+  // Expected headers (case-insensitive): title, description, platform, inventory_id (optional), photos (optional, pipe-separated URLs)
+  const importCsv = useMutation({
+    mutationFn: async (file: File) => {
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length === 0) throw new Error("CSV vuoto o non valido");
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const platformNames = new Set(PLATFORM_LIST.map((p) => p.name.toLowerCase()));
+      const platformByKey: Record<string, string> = {};
+      PLATFORM_LIST.forEach((p) => {
+        platformByKey[p.key.toLowerCase()] = p.name;
+        platformByKey[p.name.toLowerCase()] = p.name;
+      });
+      const records = rows.map((r) => {
+        const rawPlat = (r.platform ?? r.piattaforma ?? "").toString().trim().toLowerCase();
+        const platName = platformByKey[rawPlat] ?? (platformNames.has(rawPlat) ? rawPlat : "eBay");
+        const photosRaw = (r.photos ?? r.foto ?? "").toString();
+        const ph = photosRaw
+          .split(/[|,;\n]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return {
+          user_id: u.user.id,
+          inventory_id: (r.inventory_id ?? r.inventario ?? "").toString().trim() || null,
+          platform: platName,
+          generated_title: (r.title ?? r.titolo ?? "").toString().trim(),
+          generated_description: (r.description ?? r.descrizione ?? "").toString().trim(),
+          photos: ph,
+        };
+      }).filter((r) => r.generated_title || r.generated_description);
+      if (records.length === 0) throw new Error("Nessuna riga utile trovata");
+      const { error, count } = await supabase.from("ads").insert(records, { count: "exact" });
+      if (error) throw error;
+      return count ?? records.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success(`Importati ${n} annunci dal CSV`);
+    },
+    onError: (e: Error) => toast.error("Import CSV fallito", { description: e.message }),
+  });
+
+  // Auto-optimize when switching to a platform whose title is still empty
+  // and another platform has content — keeps the user's existing draft intact.
+  useEffect(() => {
+    const prev = prevPlatformRef.current;
+    prevPlatformRef.current = platform;
+    if (prev === platform) return;
+    const currentTitle = (titoli[platform] ?? "").trim();
+    if (currentTitle) return; // don't overwrite
+    const sourceTitle = (titoli[prev] ?? "").trim()
+      || (selected?.titolo ?? "").trim()
+      || (selected?.nome_oggetto ?? "").trim();
+    if (!sourceTitle) return;
+    const sourceDesc = (descrizioni[prev] ?? descrizioni[platform] ?? selected?.descrizione ?? "").trim();
+    const targetPlatform = platform;
+    (async () => {
+      try {
+        const res = await optimizeFn({
+          data: {
+            rawTitle: sourceTitle,
+            rawDescription: sourceDesc,
+            platform: targetPlatform,
+            categoria: selected?.categoria_prodotto ?? "",
+          },
+        });
+        // Only apply if the user hasn't typed something in the meantime
+        setTitoli((cur) => (cur[targetPlatform]?.trim() ? cur : { ...cur, [targetPlatform]: res.title }));
+        setDescrizioni((cur) => (cur[targetPlatform]?.trim() ? cur : { ...cur, [targetPlatform]: res.description }));
+        setLastAi({ keywords: res.keywords, score: res.score, rationale: res.rationale, platform: targetPlatform });
+        toast.success(`Titolo auto-ottimizzato per ${PLATFORMS[targetPlatform].name}`, {
+          description: `SEO score ${res.score}/100`,
+        });
+      } catch (e) {
+        // Silent fail — user can still optimize manually.
+        console.warn("auto-optimize failed", e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [platform]);
+
+
   // AI optimize ------------------------------------------------------------
   const optimizeFn = useServerFn(optimizeListing);
   const optimize = useMutation({
@@ -624,9 +748,31 @@ function AnnunciPage() {
             <Trash2 className="h-4 w-4" />
             Elimina
           </Button>
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importCsv.mutate(f);
+              if (e.target) e.target.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            onClick={() => csvInputRef.current?.click()}
+            disabled={importCsv.isPending}
+            title="Importa annunci da un file CSV (colonne: title, description, platform, inventory_id, photos)"
+          >
+            <FileUp className="h-4 w-4" />
+            {importCsv.isPending ? "Importazione..." : "Importa CSV"}
+          </Button>
           <Button onClick={() => saveAd.mutate()} disabled={saveAd.isPending}>
             <Save className="h-4 w-4" />
-            {saveAd.isPending ? "Salvataggio..." : "Salva come bozza"}
+            {saveAd.isPending
+              ? "Salvataggio..."
+              : currentAdId ? "Aggiorna bozza" : "Salva come bozza"}
           </Button>
         </div>
       </div>
