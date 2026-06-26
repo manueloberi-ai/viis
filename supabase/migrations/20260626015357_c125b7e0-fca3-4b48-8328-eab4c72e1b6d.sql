@@ -1,0 +1,1 @@
+DELETE FROM public.inventory_template_fields a USING public.inventory_template_fields b WHERE a.ctid < b.ctid AND a.inventory_item_id = b.inventory_item_id; ALTER TABLE public.inventory_template_fields ADD CONSTRAINT inventory_template_fields_inventory_item_id_key UNIQUE (inventory_item_id);
