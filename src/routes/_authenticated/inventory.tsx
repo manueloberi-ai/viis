@@ -780,7 +780,20 @@ function formFromItem(item: InventoryItem): FormState {
     titolo: item.titolo ?? "",
     descrizione: item.descrizione ?? "",
     foto_url: item.foto_url ?? "",
+    titoli_piattaforma: readPlatformMap(item.titoli_piattaforma),
+    descrizioni_piattaforma: readPlatformMap(item.descrizioni_piattaforma),
   };
+}
+
+function readPlatformMap(v: unknown): PlatformMap {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out: PlatformMap = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === "string") out[k] = val;
+    }
+    return out;
+  }
+  return {};
 }
 
 function buildItemPayload(form: FormState, userId: string): TablesInsert<"inventory_items"> {
@@ -812,6 +825,8 @@ function buildItemPayload(form: FormState, userId: string): TablesInsert<"invent
     titolo: emptyToNull(form.titolo),
     descrizione: emptyToNull(form.descrizione),
     foto_url: emptyToNull(form.foto_url),
+    titoli_piattaforma: form.titoli_piattaforma,
+    descrizioni_piattaforma: form.descrizioni_piattaforma,
   };
 }
 
