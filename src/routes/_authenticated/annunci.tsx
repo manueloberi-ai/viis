@@ -137,6 +137,8 @@ function AnnunciPage() {
   const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
   const [page, setPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef = useRef<HTMLInputElement>(null);
+  const prevPlatformRef = useRef<PlatformKey>("ebay");
   const photoLimit = PHOTO_LIMITS[platform];
 
   // Debounce search input.
