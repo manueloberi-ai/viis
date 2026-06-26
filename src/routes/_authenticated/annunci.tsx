@@ -169,7 +169,7 @@ function AnnunciPage() {
   // Filters for the ads list.
   const [search, setSearch] = useState("");
   const [searchDebounced, setSearchDebounced] = useState("");
-  const [scopeAll, setScopeAll] = useState(false); // false = solo articolo corrente
+  const [scopeAll, setScopeAll] = useState(true); // default: cerca in tutti gli annunci
   const [platformFilter, setPlatformFilter] = useState<"all" | PlatformKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
   const [page, setPage] = useState(0);
