@@ -544,6 +544,69 @@ function AnnunciPage() {
             <Plus className="h-4 w-4" />
             {newAd.isPending ? "Creazione..." : "Nuovo annuncio"}
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <FileText className="h-4 w-4" />
+                Bozze
+                {(draftsMenuQuery.data?.length ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                    {draftsMenuQuery.data!.length}
+                  </Badge>
+                )}
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+              <DropdownMenuLabel>Bozze recenti</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {(draftsMenuQuery.data ?? []).length === 0 && (
+                <div className="px-2 py-3 text-xs text-muted-foreground">
+                  Nessuna bozza salvata.
+                </div>
+              )}
+              {(draftsMenuQuery.data ?? []).map((d) => {
+                const pMeta = PLATFORM_LIST.find((p) => p.name === d.platform);
+                const inv = items.find((it) => it.id === d.inventory_id);
+                const updated = d.updated_at
+                  ? new Date(d.updated_at).toLocaleString("it-IT", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })
+                  : "—";
+                return (
+                  <DropdownMenuItem
+                    key={d.id}
+                    className="flex flex-col items-start gap-0.5 py-2"
+                    onSelect={() => {
+                      if (pMeta) setPlatform(pMeta.key);
+                      if (d.inventory_id) setSelectedId(d.inventory_id);
+                      setCurrentAdId(d.id);
+                    }}
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className="truncate text-xs font-medium">
+                        {d.generated_title?.trim() || "Senza titolo"}
+                      </span>
+                      {pMeta && (
+                        <span
+                          className="rounded px-1 py-0.5 text-[9px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: pMeta.color }}
+                        >
+                          {pMeta.short}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex w-full items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="truncate">{inv?.titolo || inv?.nome_oggetto || "—"}</span>
+                      <span className="shrink-0">{updated} · {Array.isArray(d.photos) ? d.photos.length : 0} foto</span>
+                    </div>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="outline"
             onClick={() => duplicateAd.mutate()}
@@ -563,10 +626,11 @@ function AnnunciPage() {
           </Button>
           <Button onClick={() => saveAd.mutate()} disabled={saveAd.isPending}>
             <Save className="h-4 w-4" />
-            {saveAd.isPending ? "Salvataggio..." : "Salva annuncio"}
+            {saveAd.isPending ? "Salvataggio..." : "Salva come bozza"}
           </Button>
         </div>
       </div>
+
 
       <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)_280px]">
         {/* Colonna sinistra — Associa a inventario */}
