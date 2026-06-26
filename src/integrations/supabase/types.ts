@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads: {
+        Row: {
+          created_at: string
+          generated_description: string | null
+          generated_title: string | null
+          id: string
+          inventory_id: string | null
+          photos: string[]
+          platform: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generated_description?: string | null
+          generated_title?: string | null
+          id?: string
+          inventory_id?: string | null
+          photos?: string[]
+          platform?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generated_description?: string | null
+          generated_title?: string | null
+          id?: string
+          inventory_id?: string | null
+          photos?: string[]
+          platform?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ads_inventory_id_fkey"
+            columns: ["inventory_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_items: {
         Row: {
           campi_spuntati: Json
