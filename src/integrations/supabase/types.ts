@@ -27,6 +27,7 @@ export type Database = {
           data_acquisto: string | null
           data_vendita: string | null
           descrizione: string | null
+          descrizioni_piattaforma: Json
           destinazione: string | null
           fee_piattaforma: number | null
           fonte_acquisto: string | null
@@ -47,6 +48,7 @@ export type Database = {
           spedizione: string | null
           stato_prodotto: string
           tasse: number | null
+          titoli_piattaforma: Json
           titolo: string | null
           updated_at: string
           user_id: string
@@ -64,6 +66,7 @@ export type Database = {
           data_acquisto?: string | null
           data_vendita?: string | null
           descrizione?: string | null
+          descrizioni_piattaforma?: Json
           destinazione?: string | null
           fee_piattaforma?: number | null
           fonte_acquisto?: string | null
@@ -84,6 +87,7 @@ export type Database = {
           spedizione?: string | null
           stato_prodotto: string
           tasse?: number | null
+          titoli_piattaforma?: Json
           titolo?: string | null
           updated_at?: string
           user_id: string
@@ -101,6 +105,7 @@ export type Database = {
           data_acquisto?: string | null
           data_vendita?: string | null
           descrizione?: string | null
+          descrizioni_piattaforma?: Json
           destinazione?: string | null
           fee_piattaforma?: number | null
           fonte_acquisto?: string | null
@@ -121,6 +126,7 @@ export type Database = {
           spedizione?: string | null
           stato_prodotto?: string
           tasse?: number | null
+          titoli_piattaforma?: Json
           titolo?: string | null
           updated_at?: string
           user_id?: string
