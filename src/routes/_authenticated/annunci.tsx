@@ -116,7 +116,26 @@ function AnnunciPage() {
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
+  // Filters for the ads list.
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [scopeAll, setScopeAll] = useState(false); // false = solo articolo corrente
+  const [platformFilter, setPlatformFilter] = useState<"all" | PlatformKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("updated_desc");
+  const [page, setPage] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input.
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 250);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset to first page when filters change.
+  useEffect(() => {
+    setPage(0);
+  }, [searchDebounced, scopeAll, platformFilter, sortKey, selectedId]);
+
 
   // Restore last session AFTER mount to avoid SSR/CSR mismatch.
   useEffect(() => {
