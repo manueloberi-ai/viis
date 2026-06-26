@@ -331,7 +331,7 @@ function AnnunciPage() {
 
   const saveAd = useMutation({
     mutationFn: async () => {
-      if (photos.length > MAX_PHOTOS) throw new Error(`Massimo ${MAX_PHOTOS} foto`);
+      if (photos.length > photoLimit) throw new Error(`Massimo ${photoLimit} foto`);
       if (!currentAdId) {
         // Upsert behaviour: if no current ad, create one on save.
         const { data: u } = await supabase.auth.getUser();
@@ -426,8 +426,8 @@ function AnnunciPage() {
       toast.error("URL non valido", { description: "Deve iniziare con http(s)://" });
       return;
     }
-    if (photos.length >= MAX_PHOTOS) {
-      toast.error(`Massimo ${MAX_PHOTOS} foto`);
+    if (photos.length >= photoLimit) {
+      toast.error(`Massimo ${photoLimit} foto`);
       return;
     }
     setPhotos((prev) => [...prev, v]);
@@ -438,8 +438,8 @@ function AnnunciPage() {
     mutationFn: async (files: File[]) => {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Utente non autenticato");
-      const remaining = MAX_PHOTOS - photos.length;
-      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${MAX_PHOTOS} foto`);
+      const remaining = photoLimit - photos.length;
+      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${photoLimit} foto`);
       const slice = files.slice(0, remaining);
       const paths: string[] = [];
       const failed: string[] = [];
@@ -462,7 +462,7 @@ function AnnunciPage() {
         toast.success(`${paths.length} foto caricate`);
       }
       if (skipped > 0) {
-        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${MAX_PHOTOS} foto` });
+        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${photoLimit} foto` });
       }
       if (failed.length) {
         toast.error(`${failed.length} upload falliti`, {
@@ -814,8 +814,8 @@ function AnnunciPage() {
               <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                 Foto annuncio
               </Label>
-              <span className={`text-xs tabular-nums ${photos.length > MAX_PHOTOS ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
-                {photos.length}/{MAX_PHOTOS}
+              <span className={`text-xs tabular-nums ${photos.length > photoLimit ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
+                {photos.length}/{photoLimit}
               </span>
             </div>
 
@@ -881,7 +881,7 @@ function AnnunciPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadFiles.isPending || photos.length >= MAX_PHOTOS}
+                disabled={uploadFiles.isPending || photos.length >= photoLimit}
               >
                 <UploadCloud className="h-4 w-4" />
                 {uploadFiles.isPending ? "Upload..." : "Carica file"}
@@ -904,7 +904,7 @@ function AnnunciPage() {
                   variant="outline"
                   size="sm"
                   onClick={addPhotoUrl}
-                  disabled={!photoUrlInput.trim() || photos.length >= MAX_PHOTOS}
+                  disabled={!photoUrlInput.trim() || photos.length >= photoLimit}
                 >
                   <Plus className="h-4 w-4" /> URL
                 </Button>
