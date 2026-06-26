@@ -177,9 +177,9 @@ function AnnunciPage() {
     if (!selectedId && items.length > 0) setSelectedId(items[0].id);
   }, [items, selectedId]);
 
-  // All ads for current scope (item × platform) — used for auto-load.
+  // Scoped query (item × current platform) — drives auto-load only.
   const adsQuery = useQuery({
-    queryKey: ["ads", selectedId, PLATFORMS[platform].name],
+    queryKey: ["ads", "scope", selectedId, PLATFORMS[platform].name],
     enabled: !!selectedId,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -192,6 +192,36 @@ function AnnunciPage() {
       return (data ?? []) as Ad[];
     },
   });
+
+  // Paginated + filterable list query for the visible drafts list.
+  const adsListQuery = useQuery({
+    queryKey: [
+      "ads", "list",
+      scopeAll ? "all" : selectedId,
+      platformFilter,
+      searchDebounced,
+      sortKey,
+      page,
+    ],
+    enabled: scopeAll || !!selectedId,
+    queryFn: async () => {
+      let q = supabase
+        .from("ads")
+        .select("*", { count: "exact" });
+      if (!scopeAll && selectedId) q = q.eq("inventory_id", selectedId);
+      if (platformFilter !== "all") q = q.eq("platform", PLATFORMS[platformFilter].name);
+      if (searchDebounced) q = q.ilike("generated_title", `%${searchDebounced}%`);
+      if (sortKey === "updated_desc") q = q.order("updated_at", { ascending: false });
+      else if (sortKey === "updated_asc") q = q.order("updated_at", { ascending: true });
+      else q = q.order("generated_title", { ascending: true, nullsFirst: false });
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error, count } = await q.range(from, to);
+      if (error) throw error;
+      return { rows: (data ?? []) as Ad[], total: count ?? 0 };
+    },
+  });
+
 
   // When the (item, platform) scope changes, auto-load the most recent ad
   // — OR keep the persisted currentAdId if it belongs to this scope.
