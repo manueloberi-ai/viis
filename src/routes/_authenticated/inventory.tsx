@@ -728,7 +728,7 @@ function InventoryPage() {
             <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
             <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
             <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} onChange={bind(setForm, "mese_vendita")} /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Auto da Data vendita" /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
           </div>
