@@ -18,6 +18,7 @@ import { Route as AuthenticatedRegistroCorrispettiviRouteImport } from './routes
 import { Route as AuthenticatedPlatformsRouteImport } from './routes/_authenticated/platforms'
 import { Route as AuthenticatedInventoryRouteImport } from './routes/_authenticated/inventory'
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
+import { Route as AuthenticatedGalleriaFotoRouteImport } from './routes/_authenticated/galleria-foto'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as AuthenticatedAnnunciRouteImport } from './routes/_authenticated/annunci'
 
@@ -66,6 +67,12 @@ const AuthenticatedHomeRoute = AuthenticatedHomeRouteImport.update({
   path: '/home',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGalleriaFotoRoute =
+  AuthenticatedGalleriaFotoRouteImport.update({
+    id: '/galleria-foto',
+    path: '/galleria-foto',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   id: '/contacts',
   path: '/contacts',
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/annunci': typeof AuthenticatedAnnunciRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/home': typeof AuthenticatedHomeRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/platforms': typeof AuthenticatedPlatformsRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/annunci': typeof AuthenticatedAnnunciRoute
   '/contacts': typeof AuthenticatedContactsRoute
+  '/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/home': typeof AuthenticatedHomeRoute
   '/inventory': typeof AuthenticatedInventoryRoute
   '/platforms': typeof AuthenticatedPlatformsRoute
@@ -108,6 +117,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/annunci': typeof AuthenticatedAnnunciRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
+  '/_authenticated/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
   '/_authenticated/inventory': typeof AuthenticatedInventoryRoute
   '/_authenticated/platforms': typeof AuthenticatedPlatformsRoute
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/annunci'
     | '/contacts'
+    | '/galleria-foto'
     | '/home'
     | '/inventory'
     | '/platforms'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/annunci'
     | '/contacts'
+    | '/galleria-foto'
     | '/home'
     | '/inventory'
     | '/platforms'
@@ -147,6 +159,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/annunci'
     | '/_authenticated/contacts'
+    | '/_authenticated/galleria-foto'
     | '/_authenticated/home'
     | '/_authenticated/inventory'
     | '/_authenticated/platforms'
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHomeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/galleria-foto': {
+      id: '/_authenticated/galleria-foto'
+      path: '/galleria-foto'
+      fullPath: '/galleria-foto'
+      preLoaderRoute: typeof AuthenticatedGalleriaFotoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/contacts': {
       id: '/_authenticated/contacts'
       path: '/contacts'
@@ -246,6 +266,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnnunciRoute: typeof AuthenticatedAnnunciRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
+  AuthenticatedGalleriaFotoRoute: typeof AuthenticatedGalleriaFotoRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
   AuthenticatedInventoryRoute: typeof AuthenticatedInventoryRoute
   AuthenticatedPlatformsRoute: typeof AuthenticatedPlatformsRoute
@@ -257,6 +278,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnnunciRoute: AuthenticatedAnnunciRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
+  AuthenticatedGalleriaFotoRoute: AuthenticatedGalleriaFotoRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,
   AuthenticatedInventoryRoute: AuthenticatedInventoryRoute,
   AuthenticatedPlatformsRoute: AuthenticatedPlatformsRoute,

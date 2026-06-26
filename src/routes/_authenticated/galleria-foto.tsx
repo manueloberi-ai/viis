@@ -78,7 +78,7 @@ function GalleriaFotoPage() {
           raw,
           adId: ad.id,
           adTitle: ad.generated_title?.trim() || "Senza titolo",
-          platform: ad.platform,
+          platform: ad.platform ?? "",
           platformKey: pMeta?.key ?? null,
           inventoryId: ad.inventory_id,
           index: i,
