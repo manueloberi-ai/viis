@@ -427,25 +427,40 @@ function AnnunciPage() {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error("Utente non autenticato");
       const remaining = MAX_PHOTOS - photos.length;
+      if (remaining <= 0) throw new Error(`Hai già raggiunto le ${MAX_PHOTOS} foto`);
       const slice = files.slice(0, remaining);
       const paths: string[] = [];
+      const failed: string[] = [];
       for (const file of slice) {
         const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
         const path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from(BUCKET)
-          .upload(path, file, { cacheControl: "3600", upsert: false });
-        if (error) throw error;
-        paths.push(path);
+        try {
+          await uploadWithRetry(path, file);
+          paths.push(path);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "errore";
+          failed.push(`${file.name} (${msg})`);
+        }
       }
-      return paths;
+      return { paths, failed, skipped: files.length - slice.length };
     },
-    onSuccess: (paths) => {
-      setPhotos((prev) => [...prev, ...paths]);
-      toast.success(`${paths.length} foto caricate`);
+    onSuccess: ({ paths, failed, skipped }) => {
+      if (paths.length) {
+        setPhotos((prev) => [...prev, ...paths]);
+        toast.success(`${paths.length} foto caricate`);
+      }
+      if (skipped > 0) {
+        toast.warning(`${skipped} file ignorati`, { description: `Limite massimo ${MAX_PHOTOS} foto` });
+      }
+      if (failed.length) {
+        toast.error(`${failed.length} upload falliti`, {
+          description: failed.slice(0, 3).join(" · ") + (failed.length > 3 ? "…" : ""),
+        });
+      }
     },
     onError: (e: Error) => toast.error("Upload fallito", { description: e.message }),
   });
+
 
   const removePhoto = (idx: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
