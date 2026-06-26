@@ -147,12 +147,6 @@ const SPEDIZIONE_OPTIONS = [
   "GLS",
   "TNT",
   "SDA",
-  "Nexive",
-  "Amazon Logistics",
-  "Corriere generico",
-  "Posta 1",
-  "Piego di libri",
-  "Locker",
 ] as const;
 const FONTE_ACQUISTO_OPTIONS = [
   "Vinted",
