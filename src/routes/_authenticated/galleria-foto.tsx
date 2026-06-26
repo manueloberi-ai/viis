@@ -165,8 +165,33 @@ function GalleriaFotoPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cerca per titolo annuncio…"
+              className="pl-7 h-9 w-56 text-xs"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Da</Label>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-9 w-[140px] text-xs"
+            />
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">A</Label>
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-9 w-[140px] text-xs"
+            />
+          </div>
           <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as "all" | PlatformKey)}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tutte le piattaforme</SelectItem>
               {PLATFORM_LIST.map((p) => (
@@ -174,6 +199,11 @@ function GalleriaFotoPage() {
               ))}
             </SelectContent>
           </Select>
+          {hasFilters && (
+            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9">
+              <X className="h-3.5 w-3.5" /> Reset
+            </Button>
+          )}
           <Badge variant="outline" className="h-9 px-3">
             {shown} / {Math.min(totalPhotos, GALLERY_LIMIT)} mostrate · {totalPhotos} totali
           </Badge>
@@ -191,7 +221,7 @@ function GalleriaFotoPage() {
           <Images className="mx-auto h-10 w-10 text-muted-foreground" strokeWidth={1.5} />
           <div className="mt-3 text-sm font-semibold">Nessuna foto disponibile</div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Carica foto dagli annunci per vederle qui.
+            {hasFilters ? "Nessun risultato con i filtri attivi." : "Carica foto dagli annunci per vederle qui."}
           </p>
         </Card>
       ) : (
