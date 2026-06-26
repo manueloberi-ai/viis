@@ -859,8 +859,26 @@ function PlatformTextField({
   );
 }
 
+const INVENTORY_PHOTO_BUCKET = "ad-photos";
+const isHttp = (s: string) => /^https?:\/\//i.test(s);
+
+function useResolvedPhotoUrl(value: string | null): string | null {
+  const [resolved, setResolved] = useState<string | null>(value && isHttp(value) ? value : null);
+  useEffect(() => {
+    let alive = true;
+    if (!value) { setResolved(null); return; }
+    if (isHttp(value)) { setResolved(value); return; }
+    supabase.storage.from(INVENTORY_PHOTO_BUCKET).createSignedUrl(value, 60 * 60 * 8).then(({ data }) => {
+      if (alive) setResolved(data?.signedUrl ?? null);
+    });
+    return () => { alive = false; };
+  }, [value]);
+  return resolved;
+}
+
 function PhotoThumb({ url }: { url: string | null }) {
-  if (!url) {
+  const resolved = useResolvedPhotoUrl(url);
+  if (!resolved) {
     return (
       <div className="grid h-12 w-12 place-items-center rounded-lg bg-muted text-muted-foreground/60">
         <ImageIcon className="h-5 w-5" />
@@ -869,7 +887,7 @@ function PhotoThumb({ url }: { url: string | null }) {
   }
   return (
     <img
-      src={url}
+      src={resolved}
       alt=""
       className="h-12 w-12 rounded-lg border border-border object-cover"
       onError={(e) => {
@@ -881,25 +899,78 @@ function PhotoThumb({ url }: { url: string | null }) {
 }
 
 function PhotoUploadField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const resolved = useResolvedPhotoUrl(value || null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      if (file.size > 10 * 1024 * 1024) throw new Error("Max 10MB");
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `${u.user.id}/inventory/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from(INVENTORY_PHOTO_BUCKET).upload(path, file, { cacheControl: "3600", upsert: false });
+      if (error) throw error;
+      onChange(path);
+      toast.success("Foto caricata");
+    } catch (e) {
+      toast.error("Upload fallito", { description: e instanceof Error ? e.message : "Errore" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium">Foto principale</div>
-      <div className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-background/40 transition-colors hover:border-primary/50 hover:bg-primary/5">
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="Anteprima" className="h-full w-full object-cover" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+      <div
+        className="group relative flex aspect-square w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-background/40 transition-colors hover:border-primary/50 hover:bg-primary/5"
+        onClick={() => fileRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); }}
+        onDrop={(e) => {
+          e.preventDefault();
+          const f = e.dataTransfer.files?.[0];
+          if (f) void handleFile(f);
+        }}
+      >
+        {resolved ? (
+          <img src={resolved} alt="Anteprima" className="h-full w-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-2 px-4 text-center text-xs text-muted-foreground">
             <UploadCloud className="h-6 w-6 text-muted-foreground/70" />
-            <div className="font-medium text-foreground">Incolla URL immagine</div>
-            <div>JPG, PNG o WebP — preview live qui sotto</div>
+            <div className="font-medium text-foreground">{uploading ? "Caricamento…" : "Carica o trascina foto"}</div>
+            <div>JPG, PNG, WebP — max 10MB</div>
           </div>
+        )}
+        {uploading && <div className="absolute inset-0 grid place-items-center bg-background/60 text-xs">Caricamento…</div>}
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void handleFile(f);
+          e.target.value = "";
+        }}
+      />
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          <UploadCloud className="mr-2 h-4 w-4" /> Carica file
+        </Button>
+        {value && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
+            <Trash2 className="mr-2 h-4 w-4" /> Rimuovi
+          </Button>
         )}
       </div>
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="https://…/foto.jpg"
+        placeholder="…oppure incolla un URL https://…"
         inputMode="url"
       />
     </div>
