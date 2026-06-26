@@ -20,8 +20,12 @@ import {
 import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
   MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
-  ChevronLeft, ChevronRight, ArrowUpDown,
+  ChevronLeft, ChevronRight, ArrowUpDown, FileText, ChevronDown,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
