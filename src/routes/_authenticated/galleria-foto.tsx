@@ -43,7 +43,16 @@ function isHttpUrl(s: string) {
 
 function GalleriaFotoPage() {
   const [platformFilter, setPlatformFilter] = useState<"all" | PlatformKey>("all");
+  const [search, setSearch] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [signed, setSigned] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim().toLowerCase()), 200);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const adsQuery = useQuery({
     queryKey: ["gallery-ads"],
