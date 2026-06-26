@@ -933,7 +933,7 @@ function formFromItem(item: InventoryItem): FormState {
     profitto: stringifyNumber(item.profitto),
     margine_profitto: stringifyNumber(item.margine_profitto),
     mese_acquisto: item.mese_acquisto ?? "",
-    mese_vendita: item.mese_vendita ?? "",
+    mese_vendita: item.mese_vendita ?? (item.data_vendita ? computeMeseVendita(item.data_vendita) : ""),
     ricavi_netti: stringifyNumber(item.ricavi_netti),
     soldi_persi: stringifyNumber(item.soldi_persi),
     titolo: item.titolo ?? "",
