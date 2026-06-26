@@ -21,6 +21,7 @@ import {
   Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
   MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus, Search,
   ChevronLeft, ChevronRight, ArrowUpDown, FileText, ChevronDown,
+  FileUp,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
