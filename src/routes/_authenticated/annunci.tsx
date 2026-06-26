@@ -58,10 +58,10 @@ async function uploadWithRetry(path: string, file: File): Promise<void> {
       const timeout = new Promise<never>((_, rej) =>
         setTimeout(() => rej(new Error(`Timeout dopo ${UPLOAD_TIMEOUT_MS / 1000}s`)), UPLOAD_TIMEOUT_MS),
       );
-      const res = await Promise.race([upload, timeout]);
-      // @ts-expect-error - res shape from supabase
-      if (res?.error) throw res.error;
+      const res = (await Promise.race([upload, timeout])) as { error?: { message?: string } | null };
+      if (res?.error) throw new Error(res.error.message ?? "Upload error");
       return;
+
     } catch (e) {
       lastErr = e;
       if (attempt >= UPLOAD_MAX_RETRIES) break;
