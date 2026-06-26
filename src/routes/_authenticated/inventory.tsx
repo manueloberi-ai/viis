@@ -723,6 +723,85 @@ function Field({ label, children, error, fieldKey }: { label: string; children: 
   );
 }
 
+function PlatformTextField({
+  label,
+  multiline,
+  base,
+  byPlatform,
+  onBaseChange,
+  onPlatformChange,
+  placeholder,
+}: {
+  label: string;
+  multiline: boolean;
+  base: string;
+  byPlatform: PlatformMap;
+  onBaseChange: (v: string) => void;
+  onPlatformChange: (key: string, v: string) => void;
+  placeholder?: string;
+}) {
+  const [target, setTarget] = useState<string>("default");
+  const value = target === "default" ? base : (byPlatform[target] ?? "");
+  const handleChange = (v: string) => {
+    if (target === "default") onBaseChange(v);
+    else onPlatformChange(target, v);
+  };
+  const limit = target !== "default" && PLATFORM_LIST.find((p) => p.key === target)?.titleLimit;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">{label}</div>
+        <Select value={target} onValueChange={setTarget}>
+          <SelectTrigger className="h-8 w-[200px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default (tutte le piattaforme)</SelectItem>
+            {PLATFORM_LIST.map((p) => (
+              <SelectItem key={p.key} value={p.key}>
+                {p.name} {!multiline && `· ${p.titleLimit}c`}
+                {byPlatform[p.key] ? "  ✓" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {multiline ? (
+        <Textarea
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          className="min-h-32"
+          placeholder={placeholder}
+        />
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      )}
+      {target !== "default" && (
+        <div className="flex justify-between text-[11px] text-muted-foreground">
+          <span>
+            Variante per <span className="font-semibold text-foreground">
+              {PLATFORM_LIST.find((p) => p.key === target)?.name}
+            </span> — vuoto = usa il default
+          </span>
+          {!multiline && limit && (
+            <span
+              className={
+                value.length > limit ? "text-rose-400 font-semibold tabular-nums" : "tabular-nums"
+              }
+            >
+              {value.length}/{limit}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhotoThumb({ url }: { url: string | null }) {
   if (!url) {
     return (
