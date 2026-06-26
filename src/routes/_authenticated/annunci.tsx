@@ -483,11 +483,66 @@ function AnnunciPage() {
             </div>
           )}
 
-          <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-            <div className="font-semibold text-foreground mb-1">Scorte / partendo dall'esistente</div>
-            Crea l'annuncio partendo da un articolo già in inventario per riutilizzare costi, foto e categoria.
+          {/* Lista bozze esistenti per questo articolo × piattaforma */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Bozze su {PLATFORMS[platform].name}
+              </Label>
+              <span className="text-[10px] text-muted-foreground tabular-nums">
+                {(adsQuery.data ?? []).length}
+              </span>
+            </div>
+            {adsQuery.isLoading ? (
+              <Skeleton className="h-14 w-full" />
+            ) : (adsQuery.data ?? []).length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border p-3 text-[11px] text-muted-foreground">
+                Nessuna bozza salvata. Premi "Salva annuncio" per crearne una.
+              </div>
+            ) : (
+              <ul className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                {(adsQuery.data ?? []).map((a) => {
+                  const active = a.id === currentAdId;
+                  const updated = a.updated_at
+                    ? new Date(a.updated_at).toLocaleString("it-IT", {
+                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                      })
+                    : "—";
+                  return (
+                    <li key={a.id}>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentAdId(a.id)}
+                        className={[
+                          "w-full rounded-lg border p-2 text-left transition-all",
+                          active
+                            ? "border-primary bg-primary/10"
+                            : "border-border bg-background/40 hover:bg-accent",
+                        ].join(" ")}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs font-medium">
+                            {a.generated_title?.trim() || "Senza titolo"}
+                          </span>
+                          {active && (
+                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1.5 py-0">
+                              attiva
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span>{updated}</span>
+                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto</span>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </Card>
+
 
         {/* Colonna centrale — Foto + Titolo + Descrizione */}
         <Card className="border-border bg-card p-5 space-y-5">
