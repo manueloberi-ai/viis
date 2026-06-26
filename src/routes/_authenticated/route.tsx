@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   ReceiptText,
+  Megaphone,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/_authenticated")({
 const NAV = [
   { to: "/home" as const,                  label: "Home",                   icon: LayoutDashboard },
   { to: "/inventory" as const,             label: "Inventory",              icon: Boxes },
+  { to: "/annunci" as const,               label: "Annunci",                icon: Megaphone },
   { to: "/platforms" as const,             label: "Platforms",              icon: LayoutGrid },
   { to: "/reports" as const,               label: "Reports",                icon: BarChart3 },
   { to: "/registro-corrispettivi" as const, label: "Registro Corrispettivi", icon: ReceiptText },

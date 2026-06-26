@@ -7,12 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Plus, Scissors, Trash2 } from "lucide-react";
+import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 
@@ -96,8 +92,6 @@ function PlatformsPage() {
           );
         })}
       </div>
-
-      <TitleShortener />
     </div>
   );
 }
@@ -259,92 +253,3 @@ function AccountRow({ account, index }: { account: Account; index: number }) {
   );
 }
 
-function TitleShortener() {
-  const [platform, setPlatform] = useState<PlatformKey>("ebay");
-  const [text, setText] = useState("");
-  const limit = PLATFORMS[platform].titleLimit;
-  const trimmed = text.trim();
-  const truncated = trimmed.length <= limit
-    ? trimmed
-    : trimmed.slice(0, Math.max(0, limit - 1)).trimEnd() + "…";
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(truncated);
-      toast.success("Titolo copiato");
-    } catch {
-      toast.error("Impossibile copiare");
-    }
-  };
-
-  return (
-    <Card className="border-border bg-card p-5">
-      <div className="flex items-center gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-          <Scissors className="h-5 w-5" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold">Abbassa i titoli marketplace</h2>
-          <p className="text-xs text-muted-foreground">
-            Incolla un titolo lungo, scegli la piattaforma e ottieni la versione troncata al limite.
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-4 md:grid-cols-[1fr_220px]">
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Titolo originale
-          </Label>
-          <Textarea
-            rows={3}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Es: Nintendo Game Boy Color Pokemon Yellow Edition Special Pikachu Pack 1999 ITA Completo Boxed Originale Funzionante…"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Piattaforma
-          </Label>
-          <Select value={platform} onValueChange={(v) => setPlatform(v as PlatformKey)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {PLATFORM_LIST.map((p) => (
-                <SelectItem key={p.key} value={p.key}>
-                  {p.name} — {p.titleLimit} car.
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="text-xs text-muted-foreground">
-            Limite: <span className="font-semibold text-foreground">{limit}</span> caratteri
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-lg border border-border bg-secondary/30 p-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-            Titolo ottimizzato
-          </Label>
-          <span
-            className={`text-xs tabular-nums ${
-              truncated.length > limit ? "text-rose-400" : "text-muted-foreground"
-            }`}
-          >
-            {truncated.length}/{limit}
-          </span>
-        </div>
-        <div className="rounded-md bg-background p-3 font-medium">
-          {truncated || <span className="text-muted-foreground">…</span>}
-        </div>
-        <div className="mt-2 flex justify-end">
-          <Button size="sm" variant="outline" onClick={copy} disabled={!truncated}>
-            Copia titolo
-          </Button>
-        </div>
-      </div>
-    </Card>
-  );
-}

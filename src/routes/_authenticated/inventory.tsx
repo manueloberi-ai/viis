@@ -79,6 +79,8 @@ export const Route = createFileRoute("/_authenticated/inventory")({
 type InventoryItem = Tables<"inventory_items">;
 type TemplateRow = Tables<"inventory_template_fields">;
 
+type PlatformMap = Record<string, string>;
+
 type FormState = {
   posizione_inventario: string;
   stato_prodotto: string;
@@ -105,6 +107,8 @@ type FormState = {
   titolo: string;
   descrizione: string;
   foto_url: string;
+  titoli_piattaforma: PlatformMap;
+  descrizioni_piattaforma: PlatformMap;
 };
 
 const STATO_OPTIONS = [
@@ -178,6 +182,8 @@ const emptyForm: FormState = {
   titolo: "",
   descrizione: "",
   foto_url: "",
+  titoli_piattaforma: {},
+  descrizioni_piattaforma: {},
 };
 
 function InventoryPage() {
@@ -572,17 +578,34 @@ function InventoryPage() {
                 onChange={(value) => setForm((prev) => ({ ...prev, foto_url: value }))}
               />
               <div className="space-y-4">
-                <Field label="Titolo annuncio">
-                  <Input value={form.titolo} onChange={bind(setForm, "titolo")} placeholder="Es. Pokémon Smeraldo GBA originale ITA" />
-                </Field>
-                <Field label="Descrizione annuncio">
-                  <Textarea
-                    value={form.descrizione}
-                    onChange={bind(setForm, "descrizione")}
-                    className="min-h-32"
-                    placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
-                  />
-                </Field>
+                <PlatformTextField
+                  label="Titolo annuncio"
+                  multiline={false}
+                  base={form.titolo}
+                  byPlatform={form.titoli_piattaforma}
+                  onBaseChange={(v) => setForm((prev) => ({ ...prev, titolo: v }))}
+                  onPlatformChange={(key, v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      titoli_piattaforma: { ...prev.titoli_piattaforma, [key]: v },
+                    }))
+                  }
+                  placeholder="Es. Pokémon Smeraldo GBA originale ITA"
+                />
+                <PlatformTextField
+                  label="Descrizione annuncio"
+                  multiline
+                  base={form.descrizione}
+                  byPlatform={form.descrizioni_piattaforma}
+                  onBaseChange={(v) => setForm((prev) => ({ ...prev, descrizione: v }))}
+                  onPlatformChange={(key, v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      descrizioni_piattaforma: { ...prev.descrizioni_piattaforma, [key]: v },
+                    }))
+                  }
+                  placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
+                />
               </div>
             </div>
           </div>
@@ -700,6 +723,85 @@ function Field({ label, children, error, fieldKey }: { label: string; children: 
   );
 }
 
+function PlatformTextField({
+  label,
+  multiline,
+  base,
+  byPlatform,
+  onBaseChange,
+  onPlatformChange,
+  placeholder,
+}: {
+  label: string;
+  multiline: boolean;
+  base: string;
+  byPlatform: PlatformMap;
+  onBaseChange: (v: string) => void;
+  onPlatformChange: (key: string, v: string) => void;
+  placeholder?: string;
+}) {
+  const [target, setTarget] = useState<string>("default");
+  const value = target === "default" ? base : (byPlatform[target] ?? "");
+  const handleChange = (v: string) => {
+    if (target === "default") onBaseChange(v);
+    else onPlatformChange(target, v);
+  };
+  const limit = target !== "default" && PLATFORM_LIST.find((p) => p.key === target)?.titleLimit;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium">{label}</div>
+        <Select value={target} onValueChange={setTarget}>
+          <SelectTrigger className="h-8 w-[200px] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="default">Default (tutte le piattaforme)</SelectItem>
+            {PLATFORM_LIST.map((p) => (
+              <SelectItem key={p.key} value={p.key}>
+                {p.name} {!multiline && `· ${p.titleLimit}c`}
+                {byPlatform[p.key] ? "  ✓" : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      {multiline ? (
+        <Textarea
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          className="min-h-32"
+          placeholder={placeholder}
+        />
+      ) : (
+        <Input
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      )}
+      {target !== "default" && (
+        <div className="flex justify-between text-[11px] text-muted-foreground">
+          <span>
+            Variante per <span className="font-semibold text-foreground">
+              {PLATFORM_LIST.find((p) => p.key === target)?.name}
+            </span> — vuoto = usa il default
+          </span>
+          {!multiline && limit && (
+            <span
+              className={
+                value.length > limit ? "text-rose-400 font-semibold tabular-nums" : "tabular-nums"
+              }
+            >
+              {value.length}/{limit}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PhotoThumb({ url }: { url: string | null }) {
   if (!url) {
     return (
@@ -774,7 +876,20 @@ function formFromItem(item: InventoryItem): FormState {
     titolo: item.titolo ?? "",
     descrizione: item.descrizione ?? "",
     foto_url: item.foto_url ?? "",
+    titoli_piattaforma: readPlatformMap(item.titoli_piattaforma),
+    descrizioni_piattaforma: readPlatformMap(item.descrizioni_piattaforma),
   };
+}
+
+function readPlatformMap(v: unknown): PlatformMap {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const out: PlatformMap = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+      if (typeof val === "string") out[k] = val;
+    }
+    return out;
+  }
+  return {};
 }
 
 function buildItemPayload(form: FormState, userId: string): TablesInsert<"inventory_items"> {
@@ -806,6 +921,8 @@ function buildItemPayload(form: FormState, userId: string): TablesInsert<"invent
     titolo: emptyToNull(form.titolo),
     descrizione: emptyToNull(form.descrizione),
     foto_url: emptyToNull(form.foto_url),
+    titoli_piattaforma: form.titoli_piattaforma,
+    descrizioni_piattaforma: form.descrizioni_piattaforma,
   };
 }
 
