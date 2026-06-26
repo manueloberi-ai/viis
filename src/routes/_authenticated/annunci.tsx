@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy, MessageSquareHeart,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Megaphone, Sparkles, UploadCloud, Wand2, Save, Plus, Copy,
+  MessageSquareHeart, Trash2, CopyPlus, X, ImagePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
@@ -26,25 +31,181 @@ export const Route = createFileRoute("/_authenticated/annunci")({
 });
 
 type InventoryItem = Tables<"inventory_items">;
+type Ad = Tables<"ads">;
 type PlatformMap = Record<string, string>;
+
+const STORAGE_KEY = "viis:annunci:state";
+const MAX_PHOTOS = 20;
+const BUCKET = "ad-photos";
+
 
 function readMap(v: unknown): PlatformMap {
   if (v && typeof v === "object" && !Array.isArray(v)) return v as PlatformMap;
   return {};
 }
 
+function loadPersisted(): { selectedId: string | null; platform: PlatformKey; adId: string | null } {
+  if (typeof window === "undefined") return { selectedId: null, platform: "ebay", adId: null };
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { selectedId: null, platform: "ebay", adId: null };
+    const v = JSON.parse(raw);
+    const platform: PlatformKey = (v.platform && PLATFORMS[v.platform as PlatformKey])
+      ? (v.platform as PlatformKey) : "ebay";
+    return {
+      selectedId: typeof v.selectedId === "string" ? v.selectedId : null,
+      platform,
+      adId: typeof v.adId === "string" ? v.adId : null,
+    };
+  } catch {
+    return { selectedId: null, platform: "ebay", adId: null };
+  }
+}
+
+function isHttpUrl(s: string) {
+  return /^https?:\/\//i.test(s);
+}
+
 function AnnunciPage() {
   const qc = useQueryClient();
+  // Hydration-safe defaults — restore from localStorage after mount.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [platform, setPlatform] = useState<PlatformKey>("ebay");
+  const [currentAdId, setCurrentAdId] = useState<string | null>(null);
   const [titoli, setTitoli] = useState<PlatformMap>({});
   const [descrizioni, setDescrizioni] = useState<PlatformMap>({});
-  const [foto, setFoto] = useState("");
-  const [currentAdId, setCurrentAdId] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoUrlInput, setPhotoUrlInput] = useState("");
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [confirm, setConfirm] = useState<null | "delete">(null);
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Restore last session AFTER mount to avoid SSR/CSR mismatch.
+  useEffect(() => {
+    const p = loadPersisted();
+    setSelectedId(p.selectedId);
+    setPlatform(p.platform);
+    setCurrentAdId(p.adId);
+  }, []);
+
+  // Persist session state.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ selectedId, platform, adId: currentAdId }),
+    );
+  }, [selectedId, platform, currentAdId]);
+
+  // Inventory list.
+  const itemsQuery = useQuery({
+    queryKey: ["inventory-items-annunci"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as InventoryItem[];
+    },
+  });
+  const items = itemsQuery.data ?? [];
+  const selected = useMemo(
+    () => items.find((it) => it.id === selectedId) ?? null,
+    [items, selectedId],
+  );
+
+  // Auto-select first inventory item only if nothing persisted.
+  useEffect(() => {
+    if (!selectedId && items.length > 0) setSelectedId(items[0].id);
+  }, [items, selectedId]);
+
+  // All ads for current scope (item × platform) — used for auto-load.
+  const adsQuery = useQuery({
+    queryKey: ["ads", selectedId, PLATFORMS[platform].name],
+    enabled: !!selectedId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("inventory_id", selectedId!)
+        .eq("platform", PLATFORMS[platform].name)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Ad[];
+    },
+  });
+
+  // When the (item, platform) scope changes, auto-load the most recent ad
+  // — OR keep the persisted currentAdId if it belongs to this scope.
+  useEffect(() => {
+    if (!selected) return;
+    const ads = adsQuery.data ?? [];
+    const persisted = ads.find((a) => a.id === currentAdId);
+    const pick = persisted ?? ads[0] ?? null;
+
+    if (pick) {
+      setCurrentAdId(pick.id);
+      // Hydrate titoli/descrizioni for this platform from the ad row;
+      // fall back to inventory's per-platform map if the ad has no value.
+      const invT = readMap(selected.titoli_piattaforma);
+      const invD = readMap(selected.descrizioni_piattaforma);
+      setTitoli((prev) => ({
+        ...Object.fromEntries(PLATFORM_LIST.map((p) => [p.key, prev[p.key] ?? invT[p.key] ?? ""])),
+        [platform]: pick.generated_title ?? invT[platform] ?? selected.titolo ?? selected.nome_oggetto ?? "",
+      }));
+      setDescrizioni((prev) => ({
+        ...Object.fromEntries(PLATFORM_LIST.map((p) => [p.key, prev[p.key] ?? invD[p.key] ?? ""])),
+        [platform]: pick.generated_description ?? invD[platform] ?? selected.descrizione ?? "",
+      }));
+      setPhotos(Array.isArray(pick.photos) ? pick.photos : []);
+    } else {
+      // No ad yet for this scope — pre-fill from inventory but blank the ad id.
+      setCurrentAdId(null);
+      const invT = readMap(selected.titoli_piattaforma);
+      const invD = readMap(selected.descrizioni_piattaforma);
+      setTitoli((prev) => ({
+        ...prev,
+        [platform]: invT[platform] ?? selected.titolo ?? selected.nome_oggetto ?? "",
+      }));
+      setDescrizioni((prev) => ({
+        ...prev,
+        [platform]: invD[platform] ?? selected.descrizione ?? "",
+      }));
+      setPhotos(selected.foto_url ? [selected.foto_url] : []);
+    }
+    setLastAi(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id, platform, adsQuery.data]);
+
+  // Resolve signed URLs for any photo entries stored as storage paths.
+  useEffect(() => {
+    const toSign = photos.filter((p) => p && !isHttpUrl(p) && !signedUrls[p]);
+    if (toSign.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrls(toSign, 60 * 60 * 8);
+      if (cancelled || error || !data) return;
+      const next: Record<string, string> = {};
+      data.forEach((d, i) => {
+        if (d.signedUrl) next[toSign[i]] = d.signedUrl;
+      });
+      setSignedUrls((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [photos, signedUrls]);
+
+  const photoSrc = useCallback(
+    (p: string) => (isHttpUrl(p) ? p : signedUrls[p] ?? ""),
+    [signedUrls],
+  );
+
+  // Mutations ---------------------------------------------------------------
   const newAd = useMutation({
     mutationFn: async () => {
       const { data: u } = await supabase.auth.getUser();
@@ -55,9 +216,9 @@ function AnnunciPage() {
           user_id: u.user.id,
           inventory_id: selectedId,
           platform: PLATFORMS[platform].name,
-          generated_title: "",
-          generated_description: "",
-          photos: [],
+          generated_title: titoli[platform] ?? "",
+          generated_description: descrizioni[platform] ?? "",
+          photos,
         })
         .select("id")
         .single();
@@ -74,72 +235,139 @@ function AnnunciPage() {
 
   const saveAd = useMutation({
     mutationFn: async () => {
-      if (!currentAdId) throw new Error("Nessun annuncio attivo: clicca 'Nuovo annuncio'");
+      if (photos.length > MAX_PHOTOS) throw new Error(`Massimo ${MAX_PHOTOS} foto`);
+      if (!currentAdId) {
+        // Upsert behaviour: if no current ad, create one on save.
+        const { data: u } = await supabase.auth.getUser();
+        if (!u.user) throw new Error("Utente non autenticato");
+        const { data, error } = await supabase
+          .from("ads")
+          .insert({
+            user_id: u.user.id,
+            inventory_id: selectedId,
+            platform: PLATFORMS[platform].name,
+            generated_title: titoli[platform] ?? "",
+            generated_description: descrizioni[platform] ?? "",
+            photos,
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        return data.id as string;
+      }
       const { error } = await supabase
         .from("ads")
         .update({
-          platform: PLATFORMS[platform].name,
           inventory_id: selectedId,
+          platform: PLATFORMS[platform].name,
           generated_title: titoli[platform] ?? "",
           generated_description: descrizioni[platform] ?? "",
-          photos: foto ? [foto] : [],
+          photos,
         })
         .eq("id", currentAdId);
       if (error) throw error;
+      return currentAdId;
+    },
+    onSuccess: (id) => {
+      setCurrentAdId(id);
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success("Annuncio salvato");
+    },
+    onError: (e: Error) => toast.error("Salvataggio fallito", { description: e.message }),
+  });
+
+  const duplicateAd = useMutation({
+    mutationFn: async () => {
+      if (!currentAdId) throw new Error("Nessun annuncio da duplicare");
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const { data, error } = await supabase
+        .from("ads")
+        .insert({
+          user_id: u.user.id,
+          inventory_id: selectedId,
+          platform: PLATFORMS[platform].name,
+          generated_title: (titoli[platform] ?? "") + " (copia)",
+          generated_description: descrizioni[platform] ?? "",
+          photos,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data.id as string;
+    },
+    onSuccess: (id) => {
+      setCurrentAdId(id);
+      setTitoli((prev) => ({ ...prev, [platform]: (prev[platform] ?? "") + " (copia)" }));
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success("Bozza duplicata");
+    },
+    onError: (e: Error) => toast.error("Duplicazione fallita", { description: e.message }),
+  });
+
+  const deleteAd = useMutation({
+    mutationFn: async () => {
+      if (!currentAdId) throw new Error("Nessun annuncio attivo");
+      const { error } = await supabase.from("ads").delete().eq("id", currentAdId);
+      if (error) throw error;
     },
     onSuccess: () => {
+      setCurrentAdId(null);
+      setPhotos([]);
+      setTitoli((prev) => ({ ...prev, [platform]: "" }));
+      setDescrizioni((prev) => ({ ...prev, [platform]: "" }));
       qc.invalidateQueries({ queryKey: ["ads"] });
-      toast.success("Annuncio aggiornato");
+      toast.success("Annuncio eliminato");
     },
-    onError: (e: Error) => toast.error("Salvataggio annuncio fallito", { description: e.message }),
+    onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
   });
 
-  const itemsQuery = useQuery({
-    queryKey: ["inventory-items-annunci"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory_items")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as InventoryItem[];
+  // Photo handlers ---------------------------------------------------------
+  const addPhotoUrl = () => {
+    const v = photoUrlInput.trim();
+    if (!v) return;
+    if (!isHttpUrl(v)) {
+      toast.error("URL non valido", { description: "Deve iniziare con http(s)://" });
+      return;
+    }
+    if (photos.length >= MAX_PHOTOS) {
+      toast.error(`Massimo ${MAX_PHOTOS} foto`);
+      return;
+    }
+    setPhotos((prev) => [...prev, v]);
+    setPhotoUrlInput("");
+  };
+
+  const uploadFiles = useMutation({
+    mutationFn: async (files: File[]) => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const remaining = MAX_PHOTOS - photos.length;
+      const slice = files.slice(0, remaining);
+      const paths: string[] = [];
+      for (const file of slice) {
+        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const path = `${u.user.id}/${crypto.randomUUID()}.${ext}`;
+        const { error } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, file, { cacheControl: "3600", upsert: false });
+        if (error) throw error;
+        paths.push(path);
+      }
+      return paths;
     },
+    onSuccess: (paths) => {
+      setPhotos((prev) => [...prev, ...paths]);
+      toast.success(`${paths.length} foto caricate`);
+    },
+    onError: (e: Error) => toast.error("Upload fallito", { description: e.message }),
   });
 
-  const items = itemsQuery.data ?? [];
-  const selected = useMemo(
-    () => items.find((it) => it.id === selectedId) ?? null,
-    [items, selectedId],
-  );
+  const removePhoto = (idx: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== idx));
+  };
 
-  // Auto-select first item
-  useEffect(() => {
-    if (!selectedId && items.length > 0) setSelectedId(items[0].id);
-  }, [items, selectedId]);
-
-  // Sync local edit state when selection changes
-  useEffect(() => {
-    if (!selected) return;
-    const tp = readMap(selected.titoli_piattaforma);
-    const dp = readMap(selected.descrizioni_piattaforma);
-    // fall back to global titolo/descrizione for current platform if missing
-    const fallbackT = selected.titolo ?? selected.nome_oggetto ?? "";
-    const fallbackD = selected.descrizione ?? "";
-    setTitoli({
-      ...Object.fromEntries(PLATFORM_LIST.map((p) => [p.key, tp[p.key] ?? ""])),
-      ...tp,
-      [platform]: tp[platform] ?? fallbackT,
-    });
-    setDescrizioni({
-      ...Object.fromEntries(PLATFORM_LIST.map((p) => [p.key, dp[p.key] ?? ""])),
-      ...dp,
-      [platform]: dp[platform] ?? fallbackD,
-    });
-    setFoto(selected.foto_url ?? "");
-    setLastAi(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.id]);
-
+  // AI optimize ------------------------------------------------------------
   const optimizeFn = useServerFn(optimizeListing);
   const optimize = useMutation({
     mutationFn: async () =>
@@ -167,29 +395,6 @@ function AnnunciPage() {
     onError: (e: Error) => toast.error("Ottimizzazione non riuscita", { description: e.message }),
   });
 
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!selected) throw new Error("Nessun articolo selezionato");
-      const { error } = await supabase
-        .from("inventory_items")
-        .update({
-          titoli_piattaforma: titoli,
-          descrizioni_piattaforma: descrizioni,
-          titolo: titoli[platform] || selected.titolo,
-          descrizione: descrizioni[platform] || selected.descrizione,
-          foto_url: foto || null,
-        })
-        .eq("id", selected.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inventory-items-annunci"] });
-      qc.invalidateQueries({ queryKey: ["inventory-items"] });
-      toast.success("Annuncio salvato");
-    },
-    onError: (e: Error) => toast.error("Salvataggio non riuscito", { description: e.message }),
-  });
-
   const limit = PLATFORMS[platform].titleLimit;
   const descLimit = PLATFORMS[platform].descriptionLimit;
   const titleVal = titoli[platform] ?? "";
@@ -206,12 +411,29 @@ function AnnunciPage() {
             Foto, titolo e descrizioni — ottimizzati con IA per ogni piattaforma.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => newAd.mutate()} disabled={newAd.isPending}>
             <Plus className="h-4 w-4" />
             {newAd.isPending ? "Creazione..." : "Nuovo annuncio"}
           </Button>
-          <Button onClick={() => saveAd.mutate()} disabled={!currentAdId || saveAd.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => duplicateAd.mutate()}
+            disabled={!currentAdId || duplicateAd.isPending}
+          >
+            <CopyPlus className="h-4 w-4" />
+            {duplicateAd.isPending ? "Duplicazione..." : "Duplica bozza"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setConfirm("delete")}
+            disabled={!currentAdId || deleteAd.isPending}
+            className="text-rose-400 hover:text-rose-300"
+          >
+            <Trash2 className="h-4 w-4" />
+            Elimina
+          </Button>
+          <Button onClick={() => saveAd.mutate()} disabled={saveAd.isPending}>
             <Save className="h-4 w-4" />
             {saveAd.isPending ? "Salvataggio..." : "Salva annuncio"}
           </Button>
@@ -245,6 +467,11 @@ function AnnunciPage() {
                 ))}
               </SelectContent>
             </Select>
+            {currentAdId && (
+              <div className="text-[10px] text-muted-foreground">
+                Annuncio attivo: <span className="font-mono">{currentAdId.slice(0, 8)}</span> · {PLATFORMS[platform].name}
+              </div>
+            )}
           </div>
 
           {selected && (
@@ -271,7 +498,7 @@ function AnnunciPage() {
             </div>
           </div>
 
-          {/* Selettore piattaforma — V | S | EB | MP | CM */}
+          {/* Selettore piattaforma */}
           <div className="rounded-xl border border-border bg-secondary/30 p-2">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground px-1 pb-1">
               Piattaforma corrente — titolo e descrizione personalizzati
@@ -322,33 +549,111 @@ function AnnunciPage() {
             />
           </div>
 
-          {/* FOTO UPLOAD */}
-          <div className="space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-              Carica foto
-            </Label>
-            <div className="grid aspect-[2/1] w-full place-items-center overflow-hidden rounded-xl border-2 border-dashed border-border bg-background/40 transition-colors hover:border-primary/50">
-              {foto ? (
-                <img
-                  src={foto}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                  <Plus className="h-10 w-10" strokeWidth={1.5} />
-                  <div className="text-sm font-medium text-foreground">CARICA FOTO</div>
-                  <div className="text-xs">Incolla URL immagine qui sotto</div>
-                </div>
-              )}
+          {/* FOTO — galleria multi-immagine */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                Foto annuncio
+              </Label>
+              <span className={`text-xs tabular-nums ${photos.length > MAX_PHOTOS ? "text-rose-400 font-semibold" : "text-muted-foreground"}`}>
+                {photos.length}/{MAX_PHOTOS}
+              </span>
             </div>
-            <Input
-              value={foto}
-              onChange={(e) => setFoto(e.target.value)}
-              placeholder="https://…/foto.jpg"
-              inputMode="url"
-            />
+
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {photos.map((p, i) => (
+                  <div
+                    key={`${p}-${i}`}
+                    className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-background/40"
+                  >
+                    {photoSrc(p) ? (
+                      <img
+                        src={photoSrc(p)}
+                        alt={`Foto ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                        Caricamento…
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/70 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-rose-500"
+                      aria-label={`Rimuovi foto ${i + 1}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 rounded bg-primary/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid aspect-[2/1] w-full place-items-center rounded-xl border-2 border-dashed border-border bg-background/40 text-muted-foreground">
+                <div className="flex flex-col items-center gap-2">
+                  <ImagePlus className="h-10 w-10" strokeWidth={1.5} />
+                  <div className="text-sm font-medium text-foreground">Nessuna foto</div>
+                  <div className="text-xs">Carica file o incolla un URL</div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  if (files.length) uploadFiles.mutate(files);
+                  if (e.target) e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadFiles.isPending || photos.length >= MAX_PHOTOS}
+              >
+                <UploadCloud className="h-4 w-4" />
+                {uploadFiles.isPending ? "Upload..." : "Carica file"}
+              </Button>
+              <div className="flex flex-1 min-w-[200px] gap-2">
+                <Input
+                  value={photoUrlInput}
+                  onChange={(e) => setPhotoUrlInput(e.target.value)}
+                  placeholder="https://…/foto.jpg"
+                  inputMode="url"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addPhotoUrl();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addPhotoUrl}
+                  disabled={!photoUrlInput.trim() || photos.length >= MAX_PHOTOS}
+                >
+                  <Plus className="h-4 w-4" /> URL
+                </Button>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Le foto vengono salvate solo quando clicchi "Salva annuncio". Trascina per riordinare in arrivo.
+            </p>
           </div>
 
           {/* DESCRIZIONE */}
@@ -495,7 +800,12 @@ function AnnunciPage() {
             <p className="text-muted-foreground">
               Lascia un feedback sull'ottimizzatore IA — ci aiuta a perfezionare i prompt.
             </p>
-            <Button variant="outline" size="sm" className="w-full" onClick={() => toast.message("Grazie, raccogliamo i feedback nelle prossime release.")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => toast.message("Grazie, raccogliamo i feedback nelle prossime release.")}
+            >
               Lascia un feedback
             </Button>
           </div>
@@ -507,6 +817,27 @@ function AnnunciPage() {
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
         </div>
       )}
+
+      <AlertDialog open={confirm === "delete"} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare l'annuncio?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Operazione irreversibile. L'annuncio verrà rimosso dal database, ma le foto
+              caricate restano nello spazio personale.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirm(null); deleteAd.mutate(); }}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Elimina definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
