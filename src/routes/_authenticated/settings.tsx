@@ -1,20 +1,18 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   User as UserIcon,
   CreditCard,
   Bell,
   Shield,
-  Sun,
-  Moon,
-  Monitor,
   Pencil,
   Check,
   Download,
   Trash2,
   ExternalLink,
   Crown,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -38,23 +36,14 @@ export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
-type SectionKey = "profilo" | "abbonamento" | "notifiche" | "privacy" | "aspetto";
+type SectionKey = "profilo" | "abbonamento" | "notifiche" | "privacy";
 
 const SECTIONS: { key: SectionKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profilo", label: "Profilo", icon: UserIcon },
   { key: "abbonamento", label: "Abbonamento", icon: CreditCard },
   { key: "notifiche", label: "Notifiche", icon: Bell },
   { key: "privacy", label: "Privacy", icon: Shield },
-  { key: "aspetto", label: "Aspetto", icon: Sun },
 ];
-
-type Theme = "light" | "dark" | "system";
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  root.classList.toggle("dark", isDark);
-}
 
 function SettingsPage() {
   const [section, setSection] = useState<SectionKey>("profilo");
@@ -89,7 +78,7 @@ function SettingsPage() {
         {section === "abbonamento" && <SubscriptionSection />}
         {section === "notifiche" && <NotificationsSection />}
         {section === "privacy" && <PrivacySection />}
-        {section === "aspetto" && <AppearanceSection />}
+        
       </div>
     </div>
   );
@@ -336,33 +325,71 @@ function NotificationsSection() {
 function PrivacySection() {
   const navigate = useNavigate();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [finalOpen, setFinalOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const resetFlow = () => {
+    setConfirmOpen(false);
+    setFinalOpen(false);
+    setConfirmText("");
+  };
 
   const downloadData = async () => {
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) return;
-    const [inv, ads] = await Promise.all([
-      supabase.from("inventory_items").select("*").eq("user_id", u.user.id),
-      supabase.from("ads").select("*").eq("user_id", u.user.id),
-    ]);
-    const blob = new Blob(
-      [JSON.stringify({ exported_at: new Date().toISOString(), user: u.user.email, inventory: inv.data ?? [], ads: ads.data ?? [] }, null, 2)],
-      { type: "application/json" },
-    );
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `viis-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Dati esportati");
+    try {
+      const { data: u, error: ue } = await supabase.auth.getUser();
+      if (ue || !u.user) throw ue ?? new Error("Utente non disponibile");
+      const [inv, ads] = await Promise.all([
+        supabase.from("inventory_items").select("*").eq("user_id", u.user.id),
+        supabase.from("ads").select("*").eq("user_id", u.user.id),
+      ]);
+      if (inv.error) throw inv.error;
+      if (ads.error) throw ads.error;
+      const blob = new Blob(
+        [JSON.stringify({ exported_at: new Date().toISOString(), user: u.user.email, inventory: inv.data ?? [], ads: ads.data ?? [] }, null, 2)],
+        { type: "application/json" },
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `viis-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Dati esportati");
+    } catch (e) {
+      toast.error("Esportazione fallita", { description: e instanceof Error ? e.message : String(e) });
+    }
+  };
+
+  const goToFinalStep = () => {
+    if (confirmText !== "ELIMINA") return;
+    setConfirmOpen(false);
+    setFinalOpen(true);
   };
 
   const deleteAccount = async () => {
-    toast.success("Richiesta di eliminazione inviata", { description: "Riceverai una conferma via email entro 24 ore." });
-    setConfirmOpen(false);
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
+    setDeleting(true);
+    try {
+      const { data: u, error: ue } = await supabase.auth.getUser();
+      if (ue || !u.user) throw ue ?? new Error("Sessione non valida");
+      // Clean up user-owned data (RLS scopes to current user)
+      const [adsRes, invRes] = await Promise.all([
+        supabase.from("ads").delete().eq("user_id", u.user.id),
+        supabase.from("inventory_items").delete().eq("user_id", u.user.id),
+      ]);
+      if (adsRes.error) throw adsRes.error;
+      if (invRes.error) throw invRes.error;
+      await supabase.auth.signOut();
+      toast.success("Account eliminato", { description: "I tuoi dati sono stati rimossi." });
+      resetFlow();
+      navigate({ to: "/auth" });
+    } catch (e) {
+      toast.error("Eliminazione fallita", {
+        description: e instanceof Error ? e.message : "Riprova tra qualche istante.",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -391,84 +418,61 @@ function PrivacySection() {
         <Button variant="outline" onClick={downloadData}>
           <Download className="mr-2 h-4 w-4" /> Scarica i miei dati
         </Button>
-        <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
+        <Button variant="destructive" onClick={() => { setConfirmText(""); setConfirmOpen(true); }}>
           <Trash2 className="mr-2 h-4 w-4" /> Elimina account
         </Button>
       </div>
 
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      {/* Step 1: type ELIMINA */}
+      <Dialog open={confirmOpen} onOpenChange={(v) => { if (!v) resetFlow(); else setConfirmOpen(v); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-destructive">Elimina account</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Elimina account — Passo 1 di 2
+            </DialogTitle>
             <DialogDescription>
               Questa azione è irreversibile. Tutti i tuoi inventari, annunci e impostazioni saranno eliminati.
-              Per confermare scrivi <strong>ELIMINA</strong> qui sotto.
+              Per continuare scrivi <strong>ELIMINA</strong> qui sotto.
             </DialogDescription>
           </DialogHeader>
-          <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="ELIMINA" />
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="ELIMINA"
+            autoFocus
+          />
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>Annulla</Button>
-            <Button variant="destructive" disabled={confirmText !== "ELIMINA"} onClick={deleteAccount}>
-              Elimina definitivamente
+            <Button variant="ghost" onClick={resetFlow}>Annulla</Button>
+            <Button variant="destructive" disabled={confirmText !== "ELIMINA"} onClick={goToFinalStep}>
+              Continua
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
-  );
-}
 
-// ---------- Appearance ----------
-function AppearanceSection() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    return (window.localStorage.getItem("theme") as Theme) || "dark";
-  });
-  useEffect(() => {
-    window.localStorage.setItem("theme", theme);
-    applyTheme(theme);
-    if (theme === "system") {
-      const mq = window.matchMedia("(prefers-color-scheme: dark)");
-      const handler = () => applyTheme("system");
-      mq.addEventListener("change", handler);
-      return () => mq.removeEventListener("change", handler);
-    }
-  }, [theme]);
-
-  const options: { key: Theme; label: string; icon: typeof Sun }[] = useMemo(
-    () => [
-      { key: "light", label: "Light", icon: Sun },
-      { key: "dark", label: "Dark", icon: Moon },
-      { key: "system", label: "System", icon: Monitor },
-    ],
-    [],
-  );
-
-  return (
-    <Card className="border-border bg-card p-6">
-      <h2 className="text-lg font-semibold tracking-tight">Aspetto</h2>
-      <p className="text-sm text-muted-foreground">Scegli il tema dell'interfaccia.</p>
-      <div className="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
-        {options.map((o) => {
-          const Icon = o.icon;
-          const active = theme === o.key;
-          return (
-            <button
-              key={o.key}
-              onClick={() => setTheme(o.key)}
-              className={cn(
-                "flex flex-col items-center gap-2 rounded-xl border p-4 transition-all",
-                active
-                  ? "border-primary bg-primary/10 text-primary shadow-sm"
-                  : "border-border bg-background/40 text-muted-foreground hover:border-primary/40 hover:text-foreground",
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              <span className="text-sm font-medium">{o.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Step 2: final confirmation */}
+      <Dialog open={finalOpen} onOpenChange={(v) => { if (!v && !deleting) resetFlow(); else setFinalOpen(v); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Conferma finale — Passo 2 di 2
+            </DialogTitle>
+            <DialogDescription>
+              Sei davvero sicuro? Verrai disconnesso e i tuoi dati saranno cancellati immediatamente.
+              Questa operazione non può essere annullata.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            Stai per eliminare definitivamente il tuo account Viis.
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={resetFlow} disabled={deleting}>Torna indietro</Button>
+            <Button variant="destructive" onClick={deleteAccount} disabled={deleting}>
+              {deleting ? "Eliminazione in corso…" : "Sì, elimina definitivamente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

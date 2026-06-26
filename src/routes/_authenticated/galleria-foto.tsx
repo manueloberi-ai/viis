@@ -71,15 +71,31 @@ function GalleriaFotoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("inventory_items")
-        .select("id, titolo, nome_oggetto");
+        .select("id, titolo, nome_oggetto, foto_url, updated_at");
       if (error) throw error;
-      return (data ?? []) as Pick<Item, "id" | "titolo" | "nome_oggetto">[];
+      return (data ?? []) as Pick<Item, "id" | "titolo" | "nome_oggetto" | "foto_url" | "updated_at">[];
     },
   });
 
   const allPhotos: Photo[] = useMemo(() => {
     const ads = adsQuery.data ?? [];
+    const items = itemsQuery.data ?? [];
     const out: Photo[] = [];
+    // Inventory cover photos (Prima foto)
+    for (const it of items) {
+      const raw = (it.foto_url ?? "").trim();
+      if (!raw) continue;
+      out.push({
+        raw,
+        adId: `inv-${it.id}`,
+        adTitle: it.titolo?.trim() || it.nome_oggetto || "Articolo inventario",
+        platform: "Inventario",
+        platformKey: null,
+        inventoryId: it.id,
+        index: 0,
+        updatedAt: it.updated_at,
+      });
+    }
     for (const ad of ads) {
       const list = Array.isArray(ad.photos) ? ad.photos : [];
       const pMeta = PLATFORM_LIST.find((p) => p.name === ad.platform);
@@ -97,8 +113,10 @@ function GalleriaFotoPage() {
         });
       });
     }
+    // Sort newest first
+    out.sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""));
     return out;
-  }, [adsQuery.data]);
+  }, [adsQuery.data, itemsQuery.data]);
 
   const filtered = useMemo(() => {
     const fromTs = dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : null;
@@ -249,7 +267,7 @@ function GalleriaFotoPage() {
                   )}
                   {p.index === 0 && (
                     <span className="absolute right-1.5 top-1.5 rounded bg-primary/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
-                      Cover
+                      Prima foto
                     </span>
                   )}
                 </div>
