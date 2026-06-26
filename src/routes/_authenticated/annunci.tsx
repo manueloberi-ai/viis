@@ -235,6 +235,22 @@ function AnnunciPage() {
     },
   });
 
+  // Quick-access "Bozze" menu — most recent drafts across all items × platforms.
+  const draftsMenuQuery = useQuery({
+    queryKey: ["ads", "drafts-menu"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ads")
+        .select("id, generated_title, platform, inventory_id, photos, updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Pick<Ad, "id" | "generated_title" | "platform" | "inventory_id" | "photos" | "updated_at">[];
+    },
+  });
+
+
+
 
   // When the (item, platform) scope changes, auto-load the most recent ad
   // — OR keep the persisted currentAdId if it belongs to this scope.
