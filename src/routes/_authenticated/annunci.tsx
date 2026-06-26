@@ -114,6 +114,43 @@ function isHttpUrl(s: string) {
   return /^https?:\/\//i.test(s);
 }
 
+// Minimal RFC4180-ish CSV parser (comma or semicolon, quoted fields, CRLF).
+function parseCsv(text: string): Array<Record<string, string>> {
+  const src = text.replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let sep: "," | ";" | null = null;
+  const firstLine = src.split(/\r?\n/, 1)[0] ?? "";
+  sep = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === sep) { cur.push(field); field = ""; }
+      else if (c === "\n") { cur.push(field); rows.push(cur); cur = []; field = ""; }
+      else if (c === "\r") { /* skip */ }
+      else field += c;
+    }
+  }
+  if (field.length || cur.length) { cur.push(field); rows.push(cur); }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
+  return rows.slice(1)
+    .filter((r) => r.some((v) => v && v.trim().length > 0))
+    .map((r) => {
+      const o: Record<string, string> = {};
+      headers.forEach((h, idx) => { o[h] = (r[idx] ?? "").trim(); });
+      return o;
+    });
+}
+
 function AnnunciPage() {
   const qc = useQueryClient();
   // Hydration-safe defaults — restore from localStorage after mount.
