@@ -578,17 +578,34 @@ function InventoryPage() {
                 onChange={(value) => setForm((prev) => ({ ...prev, foto_url: value }))}
               />
               <div className="space-y-4">
-                <Field label="Titolo annuncio">
-                  <Input value={form.titolo} onChange={bind(setForm, "titolo")} placeholder="Es. Pokémon Smeraldo GBA originale ITA" />
-                </Field>
-                <Field label="Descrizione annuncio">
-                  <Textarea
-                    value={form.descrizione}
-                    onChange={bind(setForm, "descrizione")}
-                    className="min-h-32"
-                    placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
-                  />
-                </Field>
+                <PlatformTextField
+                  label="Titolo annuncio"
+                  multiline={false}
+                  base={form.titolo}
+                  byPlatform={form.titoli_piattaforma}
+                  onBaseChange={(v) => setForm((prev) => ({ ...prev, titolo: v }))}
+                  onPlatformChange={(key, v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      titoli_piattaforma: { ...prev.titoli_piattaforma, [key]: v },
+                    }))
+                  }
+                  placeholder="Es. Pokémon Smeraldo GBA originale ITA"
+                />
+                <PlatformTextField
+                  label="Descrizione annuncio"
+                  multiline
+                  base={form.descrizione}
+                  byPlatform={form.descrizioni_piattaforma}
+                  onBaseChange={(v) => setForm((prev) => ({ ...prev, descrizione: v }))}
+                  onPlatformChange={(key, v) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      descrizioni_piattaforma: { ...prev.descrizioni_piattaforma, [key]: v },
+                    }))
+                  }
+                  placeholder="Descrizione completa, condizioni, accessori inclusi, modalità di spedizione…"
+                />
               </div>
             </div>
           </div>
