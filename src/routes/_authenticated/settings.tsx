@@ -302,7 +302,17 @@ function MastercardGlyph() {
   );
 }
 
-function PlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function PlanDialog({
+  open,
+  onOpenChange,
+  currentPlan,
+  onChoose,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  currentPlan: PlanKey;
+  onChoose: (plan: PlanKey) => void;
+}) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
@@ -320,10 +330,19 @@ function PlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
               <li>• Report base</li>
               <li>• Nessuna ottimizzazione AI</li>
             </ul>
-            <Button variant="outline" className="mt-5 w-full" disabled>Piano gratuito</Button>
+            <Button
+              variant="outline"
+              className="mt-5 w-full"
+              disabled={currentPlan === "free"}
+              onClick={() => onChoose("free")}
+            >
+              {currentPlan === "free" ? "Piano attuale" : "Passa a Free"}
+            </Button>
           </div>
           <div className="relative rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 to-transparent p-5">
-            <Badge className="absolute -top-2 right-4 border-amber-400/40 bg-amber-500/20 text-amber-300">Attuale</Badge>
+            {currentPlan === "pro" && (
+              <Badge className="absolute -top-2 right-4 border-amber-400/40 bg-amber-500/20 text-amber-300">Attuale</Badge>
+            )}
             <div className="text-sm font-medium text-amber-300">Pro Flipper</div>
             <div className="mt-1 text-3xl font-bold">€29,90<span className="text-base font-normal text-muted-foreground">/mese</span></div>
             <ul className="mt-4 space-y-2 text-sm">
@@ -333,7 +352,13 @@ function PlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: b
               <li>• Registro Corrispettivi & export PDF</li>
               <li>• Notifiche Telegram</li>
             </ul>
-            <Button className="mt-5 w-full" disabled>Piano attivo</Button>
+            <Button
+              className="mt-5 w-full"
+              disabled={currentPlan === "pro"}
+              onClick={() => onChoose("pro")}
+            >
+              {currentPlan === "pro" ? "Piano attivo" : "Passa a Pro Flipper"}
+            </Button>
           </div>
         </div>
       </DialogContent>
