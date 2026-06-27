@@ -334,9 +334,16 @@ function InventoryPage() {
     },
     onError: (error: unknown) => {
       const err = error as { message?: string; code?: string; details?: string; hint?: string };
-      const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
       console.error("[inventory] save failed", err);
-      toast.error("Salvataggio non riuscito", { description: desc || "Errore sconosciuto da Supabase" });
+      const isRls = err.code === "42501" || /row-level security|permission denied/i.test(err.message || "");
+      if (isRls) {
+        toast.error("Operazione bloccata: non sei il proprietario di questo articolo", {
+          description: "Puoi creare e modificare solo i prodotti del tuo account. Effettua di nuovo l'accesso se il problema persiste.",
+        });
+        return;
+      }
+      const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
+      toast.error("Salvataggio non riuscito", { description: desc || "Errore sconosciuto" });
     },
   });
 
@@ -350,8 +357,12 @@ function InventoryPage() {
       qc.invalidateQueries({ queryKey: ["inventory-template-fields"] });
       toast.success("Articolo eliminato");
     },
-    onError: (error: Error) => {
-      toast.error("Eliminazione non riuscita", { description: error.message });
+    onError: (error: Error & { code?: string }) => {
+      const isRls = error.code === "42501" || /row-level security|permission denied/i.test(error.message || "");
+      toast.error(
+        isRls ? "Eliminazione bloccata: l'articolo non ti appartiene" : "Eliminazione non riuscita",
+        { description: isRls ? "Puoi eliminare solo i tuoi prodotti." : error.message }
+      );
     },
   });
 
