@@ -235,6 +235,23 @@ function computeMeseVendita(isoDate: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${MESI_IT[d.getMonth()]} ${d.getFullYear()}`;
 }
+function parseNum(v: string): number | null {
+  const n = Number(String(v ?? "").replace(",", ".").trim());
+  return Number.isFinite(n) ? n : null;
+}
+function computeProfit(form: Pick<FormState, "prezzo_vendita_valore" | "costo_acquisto" | "costo_spedizione" | "tasse">) {
+  const sale = parseNum(form.prezzo_vendita_valore);
+  const cost = parseNum(form.costo_acquisto);
+  if (sale == null || cost == null) return { profitto: "", margine_profitto: "" };
+  const ship = parseNum(form.costo_spedizione) ?? 0;
+  const tax = parseNum(form.tasse) ?? 0;
+  const profit = sale - cost - ship - tax;
+  const margin = sale > 0 ? (profit / sale) * 100 : 0;
+  return {
+    profitto: profit.toFixed(2),
+    margine_profitto: margin.toFixed(2),
+  };
+}
 
 function InventoryPage() {
   const qc = useQueryClient();
@@ -243,6 +260,23 @@ function InventoryPage() {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<CheckedErrors>({});
+
+  // Auto-compute profitto, margine, mese_acquisto, mese_vendita
+  useEffect(() => {
+    setForm((prev) => {
+      const next = { ...prev };
+      const { profitto, margine_profitto } = computeProfit(prev);
+      const meseA = prev.data_acquisto ? computeMeseVendita(prev.data_acquisto) : "";
+      const meseV = prev.data_vendita ? computeMeseVendita(prev.data_vendita) : "";
+      let changed = false;
+      if (profitto !== prev.profitto) { next.profitto = profitto; changed = true; }
+      if (margine_profitto !== prev.margine_profitto) { next.margine_profitto = margine_profitto; changed = true; }
+      if (meseA !== prev.mese_acquisto) { next.mese_acquisto = meseA; changed = true; }
+      if (meseV && meseV !== prev.mese_vendita) { next.mese_vendita = meseV; changed = true; }
+      return changed ? next : prev;
+    });
+  }, [form.prezzo_vendita_valore, form.costo_acquisto, form.costo_spedizione, form.tasse, form.data_acquisto, form.data_vendita]);
+
 
   const inventoryQuery = useQuery({
     queryKey: ["inventory-items"],
@@ -760,9 +794,16 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
-            <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
-            <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
-            <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
+            <Field label="Profitto (auto)">
+              <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Auto da Prezzo − Costo − Sped. − Tasse" />
+              {form.profitto !== "" && (
+                <div className={`mt-1 text-xs font-semibold ${Number(form.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {eur(Number(form.profitto))} · Margine {form.margine_profitto || "0"}%
+                </div>
+              )}
+            </Field>
+            <Field label="Margine profitto (auto)"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="Auto %" /></Field>
+            <Field label="Mese acquisto (auto)"><Input value={form.mese_acquisto} readOnly placeholder="Auto da Data acquisto" /></Field>
             <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Auto da Data vendita" /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
