@@ -1159,3 +1159,86 @@ function readTemplateValue(template: TemplateRow, key: (typeof CHECKED_KEYS)[num
   } as const;
   return map[key];
 }
+
+// ------------------------------------------------------------------
+// Per-item history dialog (uses inventory_audit_log)
+// ------------------------------------------------------------------
+function ItemHistoryButton({ item }: { item: InventoryItem }) {
+  const [open, setOpen] = useState(false);
+  const historyQuery = useQuery({
+    queryKey: ["item-history", item.id],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_audit_log")
+        .select("id, action, changed_fields, created_at")
+        .eq("inventory_item_id", item.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const actionLabel: Record<string, string> = {
+    INSERT: "Creazione",
+    UPDATE: "Modifica",
+    DELETE: "Eliminazione",
+  };
+
+  return (
+    <>
+      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Storia modifiche">
+        <History className="h-4 w-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Storia di "{item.nome_oggetto ?? item.id.slice(0, 8)}"
+            </DialogTitle>
+            <DialogDescription>
+              Tutte le modifiche tracciate per questo articolo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyQuery.isLoading && (
+              <div className="text-sm text-muted-foreground py-6 text-center">Caricamento…</div>
+            )}
+            {!historyQuery.isLoading && (historyQuery.data?.length ?? 0) === 0 && (
+              <div className="text-sm text-muted-foreground py-6 text-center">Nessuna attività registrata.</div>
+            )}
+            <ol className="relative border-l border-border ml-3 space-y-4 py-2">
+              {(historyQuery.data ?? []).map((row) => {
+                const changed = row.changed_fields as Record<string, unknown> | null;
+                const keys = changed ? Object.keys(changed).filter((k) => k !== "updated_at") : [];
+                return (
+                  <li key={row.id} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {actionLabel[row.action] ?? row.action}
+                      </Badge>
+                      <time className="text-xs text-muted-foreground">
+                        {formatDateFn(new Date(row.created_at), "d MMM yyyy HH:mm:ss", { locale: itLocale })}
+                      </time>
+                    </div>
+                    {row.action === "UPDATE" && keys.length > 0 && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Campi modificati: <span className="text-foreground">{keys.join(", ")}</span>
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Chiudi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
