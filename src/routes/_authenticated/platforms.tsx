@@ -105,28 +105,6 @@ function PlatformCard({
   addPending: boolean;
 }) {
   const p = PLATFORMS[platformKey];
-  const qc = useQueryClient();
-
-  const ensure = useMutation({
-    mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Non autenticato");
-      const { data, error } = await supabase
-        .from("platform_accounts")
-        .insert({ user_id: u.user.id, platform: platformKey, username: "", enabled: true })
-        .select("id, platform, username, enabled")
-        .single();
-      if (error) throw error;
-      return data as Account;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["platform_accounts"] }),
-  });
-
-  // Ensure at least one account row exists per platform (lazy)
-  useEffect(() => {
-    if (accounts.length === 0 && !ensure.isPending) ensure.mutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accounts.length]);
 
   return (
     <Card className="flex flex-col gap-4 border-border bg-card p-5">
@@ -149,9 +127,15 @@ function PlatformCard({
       </div>
 
       <div className="flex flex-col gap-3">
-        {accounts.map((acc, i) => (
-          <AccountRow key={acc.id} account={acc} index={i} />
-        ))}
+        {accounts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-secondary/20 p-4 text-center text-xs text-muted-foreground">
+            Nessun account collegato. Aggiungine uno per iniziare.
+          </div>
+        ) : (
+          accounts.map((acc, i) => (
+            <AccountRow key={acc.id} account={acc} index={i} />
+          ))
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
