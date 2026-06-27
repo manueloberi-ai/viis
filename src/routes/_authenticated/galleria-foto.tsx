@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Images, ExternalLink, Copy, Search, X } from "lucide-react";
+import { Images, ExternalLink, Copy, Search, X, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import type { Tables } from "@/integrations/supabase/types";
@@ -48,6 +48,8 @@ function GalleriaFotoPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [signed, setSigned] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState<Record<string, true>>({});
+  const [signError, setSignError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim().toLowerCase()), 200);
@@ -150,12 +152,25 @@ function GalleriaFotoPage() {
       const { data, error } = await supabase.storage
         .from(BUCKET)
         .createSignedUrls(paths, 60 * 60 * 8);
-      if (cancelled || error || !data) return;
+      if (cancelled) return;
+      if (error || !data) {
+        setSignError(error?.message ?? "Impossibile generare gli URL firmati");
+        setFailed((prev) => {
+          const next = { ...prev };
+          for (const p of paths) next[p] = true;
+          return next;
+        });
+        return;
+      }
+      setSignError(null);
       const next: Record<string, string> = {};
+      const broken: Record<string, true> = {};
       data.forEach((d, i) => {
         if (d.signedUrl) next[paths[i]] = d.signedUrl;
+        else broken[paths[i]] = true;
       });
       setSigned((prev) => ({ ...prev, ...next }));
+      if (Object.keys(broken).length) setFailed((prev) => ({ ...prev, ...broken }));
     })();
     return () => { cancelled = true; };
   }, [filtered, signed]);
@@ -228,6 +243,12 @@ function GalleriaFotoPage() {
         </div>
       </div>
 
+      {signError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Errore nel caricamento di alcune anteprime: {signError}. Le foto interessate mostrano un segnaposto.
+        </div>
+      )}
+
       {adsQuery.isLoading ? (
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -246,12 +267,24 @@ function GalleriaFotoPage() {
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {filtered.map((p, i) => {
             const url = isHttpUrl(p.raw) ? p.raw : signed[p.raw];
+            const isFailed = failed[p.raw];
             const pMeta = PLATFORM_LIST.find((m) => m.key === p.platformKey);
             return (
               <Card key={`${p.adId}-${p.index}-${i}`} className="overflow-hidden border-border bg-card p-0">
-                <div className="relative aspect-square bg-background/40">
-                  {url ? (
-                    <img src={url} alt={p.adTitle} className="h-full w-full object-cover" />
+                <div className="relative aspect-square bg-muted/30">
+                  {url && !isFailed ? (
+                    <img
+                      src={url}
+                      alt={p.adTitle}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={() => setFailed((prev) => ({ ...prev, [p.raw]: true }))}
+                    />
+                  ) : isFailed ? (
+                    <div className="grid h-full w-full place-items-center gap-1 px-2 text-center">
+                      <ImageOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
+                      <div className="text-[10px] font-medium text-muted-foreground">Foto non disponibile</div>
+                    </div>
                   ) : (
                     <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
                       Caricamento…
