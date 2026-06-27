@@ -261,6 +261,23 @@ function InventoryPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<CheckedErrors>({});
 
+  // Auto-compute profitto, margine, mese_acquisto, mese_vendita
+  useEffect(() => {
+    setForm((prev) => {
+      const next = { ...prev };
+      const { profitto, margine_profitto } = computeProfit(prev);
+      const meseA = prev.data_acquisto ? computeMeseVendita(prev.data_acquisto) : "";
+      const meseV = prev.data_vendita ? computeMeseVendita(prev.data_vendita) : "";
+      let changed = false;
+      if (profitto !== prev.profitto) { next.profitto = profitto; changed = true; }
+      if (margine_profitto !== prev.margine_profitto) { next.margine_profitto = margine_profitto; changed = true; }
+      if (meseA !== prev.mese_acquisto) { next.mese_acquisto = meseA; changed = true; }
+      if (meseV && meseV !== prev.mese_vendita) { next.mese_vendita = meseV; changed = true; }
+      return changed ? next : prev;
+    });
+  }, [form.prezzo_vendita_valore, form.costo_acquisto, form.costo_spedizione, form.tasse, form.data_acquisto, form.data_vendita]);
+
+
   const inventoryQuery = useQuery({
     queryKey: ["inventory-items"],
     queryFn: async () => {
