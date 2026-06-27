@@ -250,13 +250,8 @@ function GalleriaFotoPage() {
             return (
               <Card key={`${p.adId}-${p.index}-${i}`} className="overflow-hidden border-border bg-card p-0">
                 <div className="relative aspect-square bg-background/40">
-                  {url ? (
-                    <img src={url} alt={p.adTitle} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
-                      Caricamento…
-                    </div>
-                  )}
+                  <GalleryImage url={url} alt={p.adTitle} />
+
                   {pMeta && (
                     <span
                       className="absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase text-white"
