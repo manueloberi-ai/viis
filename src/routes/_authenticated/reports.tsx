@@ -420,7 +420,7 @@ function DetailDialog({
   const [page, setPage] = useState(0);
 
   // Reset page when filter changes
-  useMemo(() => { setPage(0); }, [filter?.title]);
+  useEffect(() => { setPage(0); }, [filter?.title]);
 
   const open = !!filter;
 
