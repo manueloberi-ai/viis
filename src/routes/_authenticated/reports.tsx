@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Euro, Percent, ShoppingBag, BarChart3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Euro, Percent, ShoppingBag, BarChart3, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -21,6 +39,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { format as formatDateFn } from "date-fns";
+import { it as itLocale } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/reports")({
   component: ReportsPage,
@@ -73,8 +93,17 @@ function num(v: number | null | undefined): number {
   return typeof v === "number" && !isNaN(v) ? v : 0;
 }
 
+// Detail dialog filter spec
+type DetailFilter = {
+  title: string;
+  platformKey?: string;
+  category?: string;
+  monthKey?: string; // YYYY-MM
+};
+
 function ReportsPage() {
   const [range, setRange] = useState<RangeKey>("180");
+  const [detail, setDetail] = useState<DetailFilter | null>(null);
 
   const query = useQuery({
     queryKey: ["reports-inventory"],
@@ -98,10 +127,11 @@ function ReportsPage() {
     return d;
   }, [range]);
 
+  const cutoffISO = cutoff ? cutoff.toISOString().slice(0, 10) : null;
+
   const soldFiltered = useMemo(() => {
     return rows.filter((r) => {
-      const isSold = r.stato_prodotto === "venduto" || r.stato_prodotto === "venduto_consegnato" || r.data_vendita;
-      if (!isSold || !r.data_vendita) return false;
+      if (!r.data_vendita) return false;
       if (!cutoff) return true;
       return new Date(r.data_vendita) >= cutoff;
     });
@@ -126,7 +156,6 @@ function ReportsPage() {
     };
   }, [soldFiltered]);
 
-  // Helpers
   const groupSum = (key: keyof SoldRow, valueOf: (r: SoldRow) => number) => {
     const m = new Map<string, number>();
     soldFiltered.forEach((r) => {
@@ -176,11 +205,10 @@ function ReportsPage() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => {
         const [, mm] = k.split("-");
-        return { name: MONTH_LABELS[Number(mm) - 1], value: Math.round(v) };
+        return { name: MONTH_LABELS[Number(mm) - 1], monthKey: k, value: Math.round(v) };
       });
   }, [soldFiltered]);
 
-  // Shelf life: days between purchase and sale, average per category
   const shelfLifeByCategory = useMemo(() => {
     const m = new Map<string, { sum: number; count: number }>();
     soldFiltered.forEach((r) => {
@@ -201,13 +229,16 @@ function ReportsPage() {
   const fmtEuro = (v: number) =>
     new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
 
+  const openDetail = (f: DetailFilter) => setDetail(f);
+  const rangeLabel = RANGES[range];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
           <p className="text-sm text-muted-foreground">
-            Analitiche di vendita aggregate dal tuo inventario.
+            Clicca su una barra o sull'intestazione del grafico per aprire il dettaglio.
           </p>
         </div>
         <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
@@ -222,54 +253,32 @@ function ReportsPage() {
         </Select>
       </div>
 
-      {/* KPI ROW */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          icon={<Euro className="h-4 w-4" />}
-          label="Revenue totale"
-          value={fmtEuro(totals.revenue)}
-          sub={`${totals.sales} vendite`}
-        />
-        <KpiCard
-          icon={<BarChart3 className="h-4 w-4" />}
-          label="Profitto medio"
-          value={fmtEuro(totals.avgProfit)}
-          sub={`Totale ${fmtEuro(totals.profitSum)}`}
-        />
-        <KpiCard
-          icon={<Percent className="h-4 w-4" />}
-          label="Margine medio"
-          value={`${totals.avgMargin.toFixed(1)}%`}
-          sub="Su prezzo di vendita"
-        />
-        <KpiCard
-          icon={<ShoppingBag className="h-4 w-4" />}
-          label="Vendite"
-          value={String(totals.sales)}
-          sub="Nel periodo selezionato"
-        />
+        <KpiCard icon={<Euro className="h-4 w-4" />} label="Revenue totale" value={fmtEuro(totals.revenue)} sub={`${totals.sales} vendite`} />
+        <KpiCard icon={<BarChart3 className="h-4 w-4" />} label="Profitto medio" value={fmtEuro(totals.avgProfit)} sub={`Totale ${fmtEuro(totals.profitSum)}`} />
+        <KpiCard icon={<Percent className="h-4 w-4" />} label="Margine medio" value={`${totals.avgMargin.toFixed(1)}%`} sub="Su prezzo di vendita" />
+        <KpiCard icon={<ShoppingBag className="h-4 w-4" />} label="Vendite" value={String(totals.sales)} sub="Nel periodo selezionato" />
       </div>
 
-      {/* CHARTS GRID */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Revenue per Marketplace">
-          <BarsByPlatform data={revenueByPlatform} fmt={fmtEuro} />
+        <ChartCard title="Revenue per Marketplace" onSeeAll={() => openDetail({ title: `Vendite per marketplace · ${rangeLabel}` })}>
+          <BarsByPlatform data={revenueByPlatform} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite su ${d.name} · ${rangeLabel}`, platformKey: d.key })} />
         </ChartCard>
-        <ChartCard title="Revenue per Categoria">
-          <BarsHorizontal data={revenueByCategory} fmt={fmtEuro} />
+        <ChartCard title="Revenue per Categoria" onSeeAll={() => openDetail({ title: `Vendite per categoria · ${rangeLabel}` })}>
+          <BarsHorizontal data={revenueByCategory} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
-        <ChartCard title="Revenue Mensile">
-          <BarsByMonth data={revenueByMonth} fmt={fmtEuro} />
+        <ChartCard title="Revenue Mensile" onSeeAll={() => openDetail({ title: `Vendite mensili · ${rangeLabel}` })}>
+          <BarsByMonth data={revenueByMonth} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite ${d.name} (${d.monthKey})`, monthKey: d.monthKey })} />
         </ChartCard>
 
-        <ChartCard title="Profitto per Marketplace">
-          <BarsByPlatform data={profitByPlatform} fmt={fmtEuro} />
+        <ChartCard title="Profitto per Marketplace" onSeeAll={() => openDetail({ title: `Profitto per marketplace · ${rangeLabel}` })}>
+          <BarsByPlatform data={profitByPlatform} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Profitto su ${d.name} · ${rangeLabel}`, platformKey: d.key })} />
         </ChartCard>
-        <ChartCard title="Profitto per Categoria">
-          <BarsHorizontal data={profitByCategory} fmt={fmtEuro} />
+        <ChartCard title="Profitto per Categoria" onSeeAll={() => openDetail({ title: `Profitto per categoria · ${rangeLabel}` })}>
+          <BarsHorizontal data={profitByCategory} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Profitto in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
-        <ChartCard title="Shelf Life per Categoria (giorni in magazzino)">
-          <BarsHorizontal data={shelfLifeByCategory} fmt={(v) => `${v}g`} colorIndex={3} />
+        <ChartCard title="Shelf Life per Categoria (giorni in magazzino)" onSeeAll={() => openDetail({ title: `Shelf life per categoria · ${rangeLabel}` })}>
+          <BarsHorizontal data={shelfLifeByCategory} fmt={(v) => `${v}g`} colorIndex={3} onBarClick={(d) => openDetail({ title: `Articoli in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
       </div>
 
@@ -281,6 +290,12 @@ function ReportsPage() {
           Nessuna vendita registrata nel periodo selezionato. Aggiungi articoli venduti in Inventario per popolare i grafici.
         </Card>
       )}
+
+      <DetailDialog
+        filter={detail}
+        cutoffISO={cutoffISO}
+        onClose={() => setDetail(null)}
+      />
     </div>
   );
 }
@@ -300,10 +315,19 @@ function KpiCard({
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title, children, onSeeAll,
+}: { title: string; children: React.ReactNode; onSeeAll?: () => void }) {
   return (
     <Card className="border-border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">{title}</h3>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        {onSeeAll && (
+          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-primary hover:text-primary" onClick={onSeeAll}>
+            Dettaglio <ArrowUpRight className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
       <div className="h-[240px] w-full">{children}</div>
     </Card>
   );
@@ -319,8 +343,8 @@ function tooltipStyle() {
 }
 
 function BarsByPlatform({
-  data, fmt,
-}: { data: { name: string; key: string; value: number }[]; fmt: (n: number) => string }) {
+  data, fmt, onBarClick,
+}: { data: { name: string; key: string; value: number }[]; fmt: (n: number) => string; onBarClick?: (d: { name: string; key: string }) => void }) {
   if (!data.length) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -329,7 +353,7 @@ function BarsByPlatform({
         <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
         <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
         <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
-        <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+        <Bar dataKey="value" radius={[6, 6, 0, 0]} onClick={(d) => onBarClick?.(d as { name: string; key: string })} style={{ cursor: onBarClick ? "pointer" : "default" }}>
           {data.map((d, i) => (
             <Cell key={i} fill={PLATFORM_COLORS[d.key] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
           ))}
@@ -340,8 +364,8 @@ function BarsByPlatform({
 }
 
 function BarsByMonth({
-  data, fmt,
-}: { data: { name: string; value: number }[]; fmt: (n: number) => string }) {
+  data, fmt, onBarClick,
+}: { data: { name: string; monthKey: string; value: number }[]; fmt: (n: number) => string; onBarClick?: (d: { name: string; monthKey: string }) => void }) {
   if (!data.length) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -350,15 +374,15 @@ function BarsByMonth({
         <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
         <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
         <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
-        <Bar dataKey="value" fill="#6366F1" radius={[6, 6, 0, 0]} />
+        <Bar dataKey="value" fill="#6366F1" radius={[6, 6, 0, 0]} onClick={(d) => onBarClick?.(d as { name: string; monthKey: string })} style={{ cursor: onBarClick ? "pointer" : "default" }} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
 function BarsHorizontal({
-  data, fmt, colorIndex = 0,
-}: { data: { name: string; value: number }[]; fmt: (n: number) => string; colorIndex?: number }) {
+  data, fmt, colorIndex = 0, onBarClick,
+}: { data: { name: string; value: number }[]; fmt: (n: number) => string; colorIndex?: number; onBarClick?: (d: { name: string }) => void }) {
   if (!data.length) return <EmptyChart />;
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -367,7 +391,7 @@ function BarsHorizontal({
         <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
         <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
         <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
-        <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+        <Bar dataKey="value" radius={[0, 6, 6, 0]} onClick={(d) => onBarClick?.(d as { name: string })} style={{ cursor: onBarClick ? "pointer" : "default" }}>
           {data.map((_, i) => (
             <Cell key={i} fill={CATEGORY_COLORS[(i + colorIndex) % CATEGORY_COLORS.length]} />
           ))}
@@ -382,5 +406,130 @@ function EmptyChart() {
     <div className="grid h-full place-items-center text-xs text-muted-foreground">
       Nessun dato disponibile
     </div>
+  );
+}
+
+// ------------------------------------------------------------------
+// Detail dialog with server-side pagination via Supabase
+// ------------------------------------------------------------------
+const PAGE_SIZE = 10;
+
+function DetailDialog({
+  filter, cutoffISO, onClose,
+}: { filter: DetailFilter | null; cutoffISO: string | null; onClose: () => void }) {
+  const [page, setPage] = useState(0);
+
+  // Reset page when filter changes
+  useEffect(() => { setPage(0); }, [filter?.title]);
+
+  const open = !!filter;
+
+  const detailQuery = useQuery({
+    queryKey: ["reports-detail", filter, cutoffISO, page],
+    enabled: open,
+    queryFn: async () => {
+      let q = supabase
+        .from("inventory_items")
+        .select(
+          "id, nome_oggetto, piattaforma_vendita, categoria_prodotto, data_vendita, prezzo_vendita_valore, costo_acquisto, profitto, margine_profitto",
+          { count: "exact" }
+        )
+        .not("data_vendita", "is", null)
+        .order("data_vendita", { ascending: false });
+
+      if (cutoffISO) q = q.gte("data_vendita", cutoffISO);
+      if (filter?.platformKey) q = q.eq("piattaforma_vendita", filter.platformKey);
+      if (filter?.category) q = q.eq("categoria_prodotto", filter.category);
+      if (filter?.monthKey) {
+        const [y, m] = filter.monthKey.split("-").map(Number);
+        const start = new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10);
+        const end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+        q = q.gte("data_vendita", start).lt("data_vendita", end);
+      }
+
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error, count } = await q.range(from, to);
+      if (error) throw error;
+      return { rows: data ?? [], count: count ?? 0 };
+    },
+  });
+
+  const fmtEuro = (v: number | null) =>
+    v == null ? "—" : new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format(v);
+
+  const total = detailQuery.data?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rows = detailQuery.data?.rows ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>{filter?.title ?? "Dettaglio"}</DialogTitle>
+          <DialogDescription>
+            Dati filtrati dal tuo inventario. {total > 0 && `${total} risultati.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[60vh] overflow-y-auto rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Articolo</TableHead>
+                <TableHead>Piattaforma</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead className="text-right">Prezzo</TableHead>
+                <TableHead className="text-right">Profitto</TableHead>
+                <TableHead className="text-right">Margine</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {detailQuery.isLoading && (
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Caricamento…</TableCell></TableRow>
+              )}
+              {detailQuery.isError && (
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-destructive">Errore nel caricamento dei dati.</TableCell></TableRow>
+              )}
+              {!detailQuery.isLoading && !detailQuery.isError && rows.length === 0 && (
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">Nessun articolo trovato per questo filtro.</TableCell></TableRow>
+              )}
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {r.data_vendita ? formatDateFn(new Date(r.data_vendita), "d MMM yyyy", { locale: itLocale }) : "—"}
+                  </TableCell>
+                  <TableCell className="max-w-[240px] truncate font-medium">{r.nome_oggetto ?? "—"}</TableCell>
+                  <TableCell>
+                    {r.piattaforma_vendita ? (
+                      <Badge variant="outline" className="capitalize">{PLATFORM_LABEL[r.piattaforma_vendita] ?? r.piattaforma_vendita}</Badge>
+                    ) : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm">{r.categoria_prodotto ?? "—"}</TableCell>
+                  <TableCell className="text-right tabular-nums">{fmtEuro(r.prezzo_vendita_valore)}</TableCell>
+                  <TableCell className={`text-right tabular-nums ${num(r.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{fmtEuro(r.profitto)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.margine_profitto == null ? "—" : `${Number(r.margine_profitto).toFixed(1)}%`}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <DialogFooter className="flex items-center justify-between gap-2 sm:justify-between">
+          <span className="text-xs text-muted-foreground">
+            Pagina {page + 1} di {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0 || detailQuery.isFetching}>
+              <ChevronLeft className="h-4 w-4" /> Precedente
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1 || detailQuery.isFetching}>
+              Successiva <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
