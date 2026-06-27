@@ -1,0 +1,1 @@
+ALTER TABLE public.inventory_items ALTER COLUMN user_id SET DEFAULT auth.uid();

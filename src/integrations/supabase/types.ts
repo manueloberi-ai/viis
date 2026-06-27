@@ -217,7 +217,7 @@ export type Database = {
           titoli_piattaforma?: Json
           titolo?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string
           zona_acquisto?: string | null
         }
         Update: {
