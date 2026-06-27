@@ -28,7 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Euro, Percent, ShoppingBag, BarChart3, ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Euro, Percent, ShoppingBag, BarChart3, ArrowUpRight, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
