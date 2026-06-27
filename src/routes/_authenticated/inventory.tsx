@@ -105,8 +105,6 @@ type FormState = {
   margine_profitto: string;
   mese_acquisto: string;
   mese_vendita: string;
-  ricavi_netti: string;
-  soldi_persi: string;
   titolo: string;
   descrizione: string;
   foto_url: string;
@@ -217,8 +215,6 @@ const emptyForm: FormState = {
   margine_profitto: "",
   mese_acquisto: "",
   mese_vendita: "",
-  ricavi_netti: "",
-  soldi_persi: "",
   titolo: "",
   descrizione: "",
   foto_url: "",
@@ -487,9 +483,7 @@ function InventoryPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
-          <p className="text-sm text-muted-foreground">
-            Tabella operativa basata sui campi letti dallo sketch 005217, con salvataggio dedicato dei campi spuntati.
-          </p>
+          <p className="text-sm text-muted-foreground">Gestisci articoli, vendite e dati operativi.</p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative min-w-[280px]">
@@ -519,7 +513,6 @@ function InventoryPage() {
         <Card className="border-border bg-card p-0">
           <div className="border-b border-border px-5 py-4">
             <div className="text-sm font-semibold">Tabella inventario</div>
-            <div className="text-xs text-muted-foreground">Solo campi dedotti dallo sketch, senza colonne aggiuntive inventate.</div>
           </div>
           <div className="overflow-x-auto">
             <Table className="min-w-[1480px]">
@@ -547,8 +540,6 @@ function InventoryPage() {
                   <TableHead>Margine</TableHead>
                   <TableHead>Mese acquisto</TableHead>
                   <TableHead>Mese vendita</TableHead>
-                  <TableHead>Ricavi netti</TableHead>
-                  <TableHead>Soldi persi</TableHead>
                   <TableHead className="text-right">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
@@ -556,7 +547,7 @@ function InventoryPage() {
                 {inventoryQuery.isLoading
                   ? Array.from({ length: 6 }).map((_, index) => (
                       <TableRow key={index}>
-                        {Array.from({ length: 25 }).map((__, cell) => (
+                        {Array.from({ length: 23 }).map((__, cell) => (
                           <TableCell key={cell}><Skeleton className="h-4 w-full" /></TableCell>
                         ))}
                       </TableRow>
@@ -589,8 +580,6 @@ function InventoryPage() {
                         <TableCell>{formatPercent(item.margine_profitto)}</TableCell>
                         <TableCell>{item.mese_acquisto ?? "—"}</TableCell>
                         <TableCell>{item.mese_vendita ?? "—"}</TableCell>
-                        <TableCell className="num">{eur(item.ricavi_netti)}</TableCell>
-                        <TableCell className="num">{eur(item.soldi_persi)}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <ItemHistoryButton item={item} />
@@ -612,7 +601,7 @@ function InventoryPage() {
                     ))}
                 {!inventoryQuery.isLoading && filteredItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={25} className="py-12 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={23} className="py-12 text-center text-sm text-muted-foreground">
                       Nessun articolo trovato con questi filtri.
                     </TableCell>
                   </TableRow>
@@ -794,19 +783,17 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
-            <Field label="Profitto (auto)">
-              <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Auto da Prezzo − Costo − Sped. − Tasse" />
+            <Field label="Profitto">
+              <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Prezzo − Costo − Sped. − Tasse" />
               {form.profitto !== "" && (
                 <div className={`mt-1 text-xs font-semibold ${Number(form.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                   {eur(Number(form.profitto))} · Margine {form.margine_profitto || "0"}%
                 </div>
               )}
             </Field>
-            <Field label="Margine profitto (auto)"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="Auto %" /></Field>
-            <Field label="Mese acquisto (auto)"><Input value={form.mese_acquisto} readOnly placeholder="Auto da Data acquisto" /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Auto da Data vendita" /></Field>
-            <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
-            <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
+            <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="%" /></Field>
+            <Field label="Mese acquisto"><Input value={form.mese_acquisto} readOnly placeholder="Da Data acquisto" /></Field>
+            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Da Data vendita" /></Field>
           </div>
 
           </fieldset>
@@ -1071,8 +1058,6 @@ function formFromItem(item: InventoryItem): FormState {
     margine_profitto: stringifyNumber(item.margine_profitto),
     mese_acquisto: item.mese_acquisto ?? "",
     mese_vendita: item.mese_vendita ?? (item.data_vendita ? computeMeseVendita(item.data_vendita) : ""),
-    ricavi_netti: stringifyNumber(item.ricavi_netti),
-    soldi_persi: stringifyNumber(item.soldi_persi),
     titolo: item.titolo ?? "",
     descrizione: item.descrizione ?? "",
     foto_url: item.foto_url ?? "",
@@ -1115,8 +1100,6 @@ function buildItemPayload(form: FormState, userId: string): TablesInsert<"invent
     margine_profitto: numberOrNull(form.margine_profitto),
     mese_acquisto: emptyToNull(form.mese_acquisto),
     mese_vendita: emptyToNull(form.mese_vendita),
-    ricavi_netti: numberOrNull(form.ricavi_netti),
-    soldi_persi: numberOrNull(form.soldi_persi),
     campi_spuntati: buildCheckedJson(form),
     titolo: emptyToNull(form.titolo),
     descrizione: emptyToNull(form.descrizione),

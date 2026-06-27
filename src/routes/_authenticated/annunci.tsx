@@ -27,6 +27,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
@@ -162,7 +163,8 @@ function AnnunciPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUrlInput, setPhotoUrlInput] = useState("");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<null | "delete">(null);
+  const [confirm, setConfirm] = useState<null | "delete" | "delete-bulk" | "delete-all">(null);
+  const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
@@ -505,7 +507,50 @@ function AnnunciPage() {
     onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
   });
 
-  // Photo handlers ---------------------------------------------------------
+  const deleteManyAds = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) throw new Error("Nessuna bozza selezionata");
+      const { error } = await supabase.from("ads").delete().in("id", ids);
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: (ids) => {
+      if (currentAdId && ids.includes(currentAdId)) {
+        setCurrentAdId(null);
+        setPhotos([]);
+        setTitoli((prev) => ({ ...prev, [platform]: "" }));
+        setDescrizioni((prev) => ({ ...prev, [platform]: "" }));
+      }
+      setSelectedDrafts(new Set());
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success(`${ids.length} bozz${ids.length === 1 ? "a eliminata" : "e eliminate"}`);
+    },
+    onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
+  });
+
+  const deleteAllAds = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const { error, count } = await supabase
+        .from("ads")
+        .delete({ count: "exact" })
+        .eq("user_id", u.user.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    onSuccess: (n) => {
+      setCurrentAdId(null);
+      setPhotos([]);
+      setTitoli((prev) => ({ ...prev, [platform]: "" }));
+      setDescrizioni((prev) => ({ ...prev, [platform]: "" }));
+      setSelectedDrafts(new Set());
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success(`${n} bozz${n === 1 ? "a eliminata" : "e eliminate"}`);
+    },
+    onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
+  });
+
   const addPhotoUrl = () => {
     const v = photoUrlInput.trim();
     if (!v) return;
@@ -917,6 +962,57 @@ function AnnunciPage() {
               </SelectContent>
             </Select>
 
+            {/* Bulk selection toolbar */}
+            {(adsListQuery.data?.rows.length ?? 0) > 0 && (() => {
+              const rows = adsListQuery.data!.rows;
+              const pageIds = rows.map((r) => r.id);
+              const allSelected = pageIds.every((id) => selectedDrafts.has(id));
+              const someSelected = selectedDrafts.size > 0;
+              return (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-background/40 px-2 py-1.5">
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={(c) => {
+                        setSelectedDrafts((prev) => {
+                          const next = new Set(prev);
+                          if (c) pageIds.forEach((id) => next.add(id));
+                          else pageIds.forEach((id) => next.delete(id));
+                          return next;
+                        });
+                      }}
+                    />
+                    {someSelected ? `${selectedDrafts.size} selezionat${selectedDrafts.size === 1 ? "a" : "e"}` : "Seleziona pagina"}
+                  </label>
+                  <div className="flex gap-1">
+                    {someSelected && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => setConfirm("delete-bulk")}
+                        disabled={deleteManyAds.isPending}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Elimina
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-[11px]"
+                      onClick={() => setConfirm("delete-all")}
+                      disabled={deleteAllAds.isPending}
+                    >
+                      Elimina tutti
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {adsListQuery.isLoading || adsListQuery.isFetching ? (
               <div className="space-y-1.5">
                 {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -929,6 +1025,7 @@ function AnnunciPage() {
               <ul className="space-y-1.5">
                 {adsListQuery.data!.rows.map((a) => {
                   const active = a.id === currentAdId;
+                  const checked = selectedDrafts.has(a.id);
                   const updated = a.updated_at
                     ? new Date(a.updated_at).toLocaleString("it-IT", {
                         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -937,40 +1034,54 @@ function AnnunciPage() {
                   const pMeta = PLATFORM_LIST.find((p) => p.name === a.platform);
                   return (
                     <li key={a.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (pMeta) setPlatform(pMeta.key);
-                          if (a.inventory_id && a.inventory_id !== selectedId) {
-                            setSelectedId(a.inventory_id);
-                          }
-                          setCurrentAdId(a.id);
-                        }}
+                      <div
                         className={[
-                          "w-full rounded-lg border p-2 text-left transition-all",
+                          "flex items-center gap-2 rounded-lg border p-2 transition-all",
                           active
                             ? "border-primary bg-primary/10"
                             : "border-border bg-background/40 hover:bg-accent",
                         ].join(" ")}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-xs font-medium">
-                            {a.generated_title?.trim() || "Senza titolo"}
-                          </span>
-                          {pMeta && (
-                            <span
-                              className="rounded px-1 py-0.5 text-[9px] font-bold text-white"
-                              style={{ backgroundColor: pMeta.color }}
-                            >
-                              {pMeta.short}
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(c) => {
+                            setSelectedDrafts((prev) => {
+                              const next = new Set(prev);
+                              if (c) next.add(a.id); else next.delete(a.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (pMeta) setPlatform(pMeta.key);
+                            if (a.inventory_id && a.inventory_id !== selectedId) {
+                              setSelectedId(a.inventory_id);
+                            }
+                            setCurrentAdId(a.id);
+                          }}
+                          className="flex-1 text-left min-w-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-xs font-medium">
+                              {a.generated_title?.trim() || "Senza titolo"}
                             </span>
-                          )}
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
-                          <span>{updated}</span>
-                          <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto{active ? " · attiva" : ""}</span>
-                        </div>
-                      </button>
+                            {pMeta && (
+                              <span
+                                className="rounded px-1 py-0.5 text-[9px] font-bold text-white shrink-0"
+                                style={{ backgroundColor: pMeta.color }}
+                              >
+                                {pMeta.short}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>{updated}</span>
+                            <span>{Array.isArray(a.photos) ? a.photos.length : 0} foto{active ? " · attiva" : ""}</span>
+                          </div>
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -1358,6 +1469,46 @@ function AnnunciPage() {
               className="bg-rose-500 hover:bg-rose-600"
             >
               Elimina definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirm === "delete-bulk"} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {selectedDrafts.size} bozz{selectedDrafts.size === 1 ? "a" : "e"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le bozze selezionate verranno rimosse definitivamente. Le foto restano nello spazio personale.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirm(null); deleteManyAds.mutate(Array.from(selectedDrafts)); }}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Elimina selezionate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirm === "delete-all"} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare TUTTE le bozze?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verranno rimosse tutte le bozze del tuo account, su ogni piattaforma e articolo. Operazione irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirm(null); deleteAllAds.mutate(); }}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Elimina tutte
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
