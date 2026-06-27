@@ -58,6 +58,69 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          citta: string | null
+          created_at: string
+          email: string | null
+          id: string
+          nome: string
+          note: string | null
+          paese: string | null
+          piattaforma: string | null
+          preferito: boolean
+          tags: string[]
+          telefono: string | null
+          tipo: string
+          totale_speso: number
+          totale_transazioni: number
+          ultimo_contatto: string | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          citta?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome: string
+          note?: string | null
+          paese?: string | null
+          piattaforma?: string | null
+          preferito?: boolean
+          tags?: string[]
+          telefono?: string | null
+          tipo?: string
+          totale_speso?: number
+          totale_transazioni?: number
+          ultimo_contatto?: string | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          citta?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          nome?: string
+          note?: string | null
+          paese?: string | null
+          piattaforma?: string | null
+          preferito?: boolean
+          tags?: string[]
+          telefono?: string | null
+          tipo?: string
+          totale_speso?: number
+          totale_transazioni?: number
+          ultimo_contatto?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           campi_spuntati: Json
