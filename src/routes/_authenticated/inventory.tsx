@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Euro, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
+import { Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { recordRlsEvent, isRlsError } from "@/lib/rls-events";
+import { format as formatDateFn } from "date-fns";
+import { it as itLocale } from "date-fns/locale";
 
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} è obbligatorio`).max(200, `${label} troppo lungo (max 200)`);
