@@ -469,6 +469,9 @@ function ContattiPage() {
           </table>
         </div>
       </Card>
+      )}
+
+
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={(o) => { if (!o) { setOpen(false); setEditingId(null); } }}>
