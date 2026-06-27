@@ -20,6 +20,7 @@ import { Route as AuthenticatedInventoryRouteImport } from './routes/_authentica
 import { Route as AuthenticatedHomeRouteImport } from './routes/_authenticated/home'
 import { Route as AuthenticatedGalleriaFotoRouteImport } from './routes/_authenticated/galleria-foto'
 import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
+import { Route as AuthenticatedAuditLogRouteImport } from './routes/_authenticated/audit-log'
 import { Route as AuthenticatedAnnunciRouteImport } from './routes/_authenticated/annunci'
 
 const AuthRoute = AuthRouteImport.update({
@@ -78,6 +79,11 @@ const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
   path: '/contacts',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAuditLogRoute = AuthenticatedAuditLogRouteImport.update({
+  id: '/audit-log',
+  path: '/audit-log',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAnnunciRoute = AuthenticatedAnnunciRouteImport.update({
   id: '/annunci',
   path: '/annunci',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/annunci': typeof AuthenticatedAnnunciRoute
+  '/audit-log': typeof AuthenticatedAuditLogRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/annunci': typeof AuthenticatedAnnunciRoute
+  '/audit-log': typeof AuthenticatedAuditLogRoute
   '/contacts': typeof AuthenticatedContactsRoute
   '/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/home': typeof AuthenticatedHomeRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/annunci': typeof AuthenticatedAnnunciRoute
+  '/_authenticated/audit-log': typeof AuthenticatedAuditLogRoute
   '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/galleria-foto': typeof AuthenticatedGalleriaFotoRoute
   '/_authenticated/home': typeof AuthenticatedHomeRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/annunci'
+    | '/audit-log'
     | '/contacts'
     | '/galleria-foto'
     | '/home'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/annunci'
+    | '/audit-log'
     | '/contacts'
     | '/galleria-foto'
     | '/home'
@@ -158,6 +169,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/annunci'
+    | '/_authenticated/audit-log'
     | '/_authenticated/contacts'
     | '/_authenticated/galleria-foto'
     | '/_authenticated/home'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedContactsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/audit-log': {
+      id: '/_authenticated/audit-log'
+      path: '/audit-log'
+      fullPath: '/audit-log'
+      preLoaderRoute: typeof AuthenticatedAuditLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/annunci': {
       id: '/_authenticated/annunci'
       path: '/annunci'
@@ -265,6 +284,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnnunciRoute: typeof AuthenticatedAnnunciRoute
+  AuthenticatedAuditLogRoute: typeof AuthenticatedAuditLogRoute
   AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedGalleriaFotoRoute: typeof AuthenticatedGalleriaFotoRoute
   AuthenticatedHomeRoute: typeof AuthenticatedHomeRoute
@@ -277,6 +297,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnnunciRoute: AuthenticatedAnnunciRoute,
+  AuthenticatedAuditLogRoute: AuthenticatedAuditLogRoute,
   AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedGalleriaFotoRoute: AuthenticatedGalleriaFotoRoute,
   AuthenticatedHomeRoute: AuthenticatedHomeRoute,

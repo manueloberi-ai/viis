@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Euro, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
+import { Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+import { recordRlsEvent, isRlsError } from "@/lib/rls-events";
+import { format as formatDateFn } from "date-fns";
+import { it as itLocale } from "date-fns/locale";
 
 const requiredString = (label: string) =>
   z.string().trim().min(1, `${label} è obbligatorio`).max(200, `${label} troppo lungo (max 200)`);
@@ -335,10 +338,16 @@ function InventoryPage() {
     onError: (error: unknown) => {
       const err = error as { message?: string; code?: string; details?: string; hint?: string };
       console.error("[inventory] save failed", err);
-      const isRls = err.code === "42501" || /row-level security|permission denied/i.test(err.message || "");
-      if (isRls) {
+      if (isRlsError(err)) {
+        recordRlsEvent({
+          table: "inventory_items",
+          action: editing ? "UPDATE" : "INSERT",
+          itemId: editing?.id ?? null,
+          itemLabel: form.nome_oggetto || null,
+          message: err.message ?? "RLS",
+        });
         toast.error("Operazione bloccata: non sei il proprietario di questo articolo", {
-          description: "Puoi creare e modificare solo i prodotti del tuo account. Effettua di nuovo l'accesso se il problema persiste.",
+          description: "Puoi creare e modificare solo i prodotti del tuo account. L'evento è stato salvato nel Log Attività.",
         });
         return;
       }
@@ -351,18 +360,28 @@ function InventoryPage() {
     mutationFn: async (item: InventoryItem) => {
       const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
       if (error) throw error;
+      return item;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory-items"] });
       qc.invalidateQueries({ queryKey: ["inventory-template-fields"] });
       toast.success("Articolo eliminato");
     },
-    onError: (error: Error & { code?: string }) => {
-      const isRls = error.code === "42501" || /row-level security|permission denied/i.test(error.message || "");
-      toast.error(
-        isRls ? "Eliminazione bloccata: l'articolo non ti appartiene" : "Eliminazione non riuscita",
-        { description: isRls ? "Puoi eliminare solo i tuoi prodotti." : error.message }
-      );
+    onError: (error: Error & { code?: string }, item) => {
+      if (isRlsError(error)) {
+        recordRlsEvent({
+          table: "inventory_items",
+          action: "DELETE",
+          itemId: item.id,
+          itemLabel: item.nome_oggetto ?? null,
+          message: error.message,
+        });
+        toast.error("Eliminazione bloccata: l'articolo non ti appartiene", {
+          description: "Puoi eliminare solo i tuoi prodotti. L'evento è stato salvato nel Log Attività.",
+        });
+        return;
+      }
+      toast.error("Eliminazione non riuscita", { description: error.message });
     },
   });
 
@@ -540,6 +559,7 @@ function InventoryPage() {
                         <TableCell className="num">{eur(item.soldi_persi)}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
+                            <ItemHistoryButton item={item} />
                             <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Modifica">
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -1138,4 +1158,87 @@ function readTemplateValue(template: TemplateRow, key: (typeof CHECKED_KEYS)[num
     mese_vendita: template.mese_vendita,
   } as const;
   return map[key];
+}
+
+// ------------------------------------------------------------------
+// Per-item history dialog (uses inventory_audit_log)
+// ------------------------------------------------------------------
+function ItemHistoryButton({ item }: { item: InventoryItem }) {
+  const [open, setOpen] = useState(false);
+  const historyQuery = useQuery({
+    queryKey: ["item-history", item.id],
+    enabled: open,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_audit_log")
+        .select("id, action, changed_fields, created_at")
+        .eq("inventory_item_id", item.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const actionLabel: Record<string, string> = {
+    INSERT: "Creazione",
+    UPDATE: "Modifica",
+    DELETE: "Eliminazione",
+  };
+
+  return (
+    <>
+      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Storia modifiche">
+        <History className="h-4 w-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Storia di "{item.nome_oggetto ?? item.id.slice(0, 8)}"
+            </DialogTitle>
+            <DialogDescription>
+              Tutte le modifiche tracciate per questo articolo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {historyQuery.isLoading && (
+              <div className="text-sm text-muted-foreground py-6 text-center">Caricamento…</div>
+            )}
+            {!historyQuery.isLoading && (historyQuery.data?.length ?? 0) === 0 && (
+              <div className="text-sm text-muted-foreground py-6 text-center">Nessuna attività registrata.</div>
+            )}
+            <ol className="relative border-l border-border ml-3 space-y-4 py-2">
+              {(historyQuery.data ?? []).map((row) => {
+                const changed = row.changed_fields as Record<string, unknown> | null;
+                const keys = changed ? Object.keys(changed).filter((k) => k !== "updated_at") : [];
+                return (
+                  <li key={row.id} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {actionLabel[row.action] ?? row.action}
+                      </Badge>
+                      <time className="text-xs text-muted-foreground">
+                        {formatDateFn(new Date(row.created_at), "d MMM yyyy HH:mm:ss", { locale: itLocale })}
+                      </time>
+                    </div>
+                    {row.action === "UPDATE" && keys.length > 0 && (
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Campi modificati: <span className="text-foreground">{keys.join(", ")}</span>
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Chiudi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
