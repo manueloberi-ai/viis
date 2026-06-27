@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Images, ExternalLink, Copy, Search, X } from "lucide-react";
+import { Images, ExternalLink, Copy, Search, X, ImageOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import type { Tables } from "@/integrations/supabase/types";
