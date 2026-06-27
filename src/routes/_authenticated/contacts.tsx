@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, CalendarPlus, UserPlus, BellPlus, Search, X, Pencil, Trash2,
-  Calendar as CalendarIcon, Link2,
+  Calendar as CalendarIcon, Link2, LayoutList, CalendarDays, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
