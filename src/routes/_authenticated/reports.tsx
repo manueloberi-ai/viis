@@ -554,6 +554,63 @@ function DetailDialog({
             Pagina {page + 1} di {totalPages}
           </span>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={total === 0 || detailQuery.isFetching}
+              onClick={async () => {
+                try {
+                  let q = supabase
+                    .from("inventory_items")
+                    .select("data_vendita, nome_oggetto, piattaforma_vendita, categoria_prodotto, prezzo_vendita_valore, costo_acquisto, profitto, margine_profitto")
+                    .not("data_vendita", "is", null)
+                    .order("data_vendita", { ascending: false });
+                  if (cutoffISO) q = q.gte("data_vendita", cutoffISO);
+                  if (filter?.platformKey) q = q.eq("piattaforma_vendita", filter.platformKey);
+                  if (filter?.category) q = q.eq("categoria_prodotto", filter.category);
+                  if (filter?.monthKey) {
+                    const [y, m] = filter.monthKey.split("-").map(Number);
+                    const start = new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10);
+                    const end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+                    q = q.gte("data_vendita", start).lt("data_vendita", end);
+                  }
+                  const { data, error } = await q;
+                  if (error) throw error;
+                  const header = ["Data", "Articolo", "Piattaforma", "Categoria", "Prezzo", "Costo", "Profitto", "Margine %"];
+                  const esc = (v: unknown) => {
+                    const s = v == null ? "" : String(v);
+                    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+                  };
+                  const lines = [header.join(",")].concat(
+                    (data ?? []).map((r) => [
+                      r.data_vendita ?? "",
+                      r.nome_oggetto ?? "",
+                      r.piattaforma_vendita ?? "",
+                      r.categoria_prodotto ?? "",
+                      r.prezzo_vendita_valore ?? "",
+                      r.costo_acquisto ?? "",
+                      r.profitto ?? "",
+                      r.margine_profitto ?? "",
+                    ].map(esc).join(","))
+                  );
+                  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  const slug = (filter?.title ?? "reports").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+                  a.href = url;
+                  a.download = `${slug || "reports"}-${new Date().toISOString().slice(0, 10)}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Esportate ${data?.length ?? 0} righe`);
+                } catch (e) {
+                  toast.error("Errore durante l'export CSV", { description: e instanceof Error ? e.message : undefined });
+                }
+              }}
+            >
+              <Download className="h-4 w-4" /> Esporta CSV
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0 || detailQuery.isFetching}>
               <ChevronLeft className="h-4 w-4" /> Precedente
             </Button>
