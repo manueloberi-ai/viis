@@ -156,9 +156,20 @@ function GoogleGlyph() {
 }
 
 // ---------- Subscription ----------
+type PlanKey = "free" | "pro";
+const PLAN_META: Record<PlanKey, { name: string; price: string }> = {
+  free: { name: "Free", price: "€0/mese" },
+  pro: { name: "Pro Flipper", price: "€29,90/mese" },
+};
+
 function SubscriptionSection() {
   const [planOpen, setPlanOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [confirmPlan, setConfirmPlan] = useState<PlanKey | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<PlanKey>("pro");
+  const [canceled, setCanceled] = useState(false);
+
   return (
     <Card className="border-border bg-card p-6">
       <h2 className="text-lg font-semibold tracking-tight">Abbonamento</h2>
@@ -172,9 +183,11 @@ function SubscriptionSection() {
             </div>
             <div>
               <Badge className="border-amber-400/40 bg-amber-500/20 text-amber-300 hover:bg-amber-500/25">
-                Pro Flipper
+                {PLAN_META[currentPlan].name}
               </Badge>
-              <div className="mt-1 text-sm text-muted-foreground">Il tuo piano attuale</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {canceled ? "Disdetta programmata · attivo fino al rinnovo" : "Il tuo piano attuale"}
+              </div>
             </div>
           </div>
           <Button onClick={() => setPlanOpen(true)}>Cambia Piano</Button>
@@ -183,15 +196,19 @@ function SubscriptionSection() {
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border bg-background/40 p-4">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Prossimo rinnovo</div>
-            <div className="mt-1 font-semibold">18 Ottobre 2026 — €29,90</div>
-            <Button
-              variant="link"
-              size="sm"
-              className="mt-2 h-auto p-0 text-destructive"
-              onClick={() => toast.success("Disdetta programmata", { description: "Il piano resterà attivo fino alla scadenza." })}
-            >
-              Disdici servizio
-            </Button>
+            <div className="mt-1 font-semibold">
+              {canceled ? "Nessun rinnovo — disdetto" : "18 Ottobre 2026 — €29,90"}
+            </div>
+            {!canceled && (
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2 h-auto p-0 text-destructive"
+                onClick={() => setCancelOpen(true)}
+              >
+                Disdici servizio
+              </Button>
+            )}
           </div>
           <div className="rounded-lg border border-border bg-background/40 p-4">
             <div className="text-xs uppercase tracking-wide text-muted-foreground">Metodo di pagamento</div>
@@ -205,8 +222,71 @@ function SubscriptionSection() {
         </div>
       </div>
 
-      <PlanDialog open={planOpen} onOpenChange={setPlanOpen} />
+      <PlanDialog
+        open={planOpen}
+        onOpenChange={setPlanOpen}
+        currentPlan={currentPlan}
+        onChoose={(plan) => {
+          setPlanOpen(false);
+          setConfirmPlan(plan);
+        }}
+      />
       <PaymentDialog open={payOpen} onOpenChange={setPayOpen} />
+
+      <Dialog open={!!confirmPlan} onOpenChange={(v) => !v && setConfirmPlan(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Conferma cambio piano</DialogTitle>
+            <DialogDescription>
+              Stai per passare al piano <b>{confirmPlan && PLAN_META[confirmPlan].name}</b> ({confirmPlan && PLAN_META[confirmPlan].price}).
+              Il nuovo piano sarà attivo dal prossimo ciclo di fatturazione.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmPlan(null)}>Annulla</Button>
+            <Button
+              onClick={() => {
+                if (!confirmPlan) return;
+                setCurrentPlan(confirmPlan);
+                setCanceled(false);
+                toast.success(`Piano aggiornato a ${PLAN_META[confirmPlan].name}`);
+                setConfirmPlan(null);
+              }}
+            >
+              Conferma cambio
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Disdici servizio
+            </DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler disdire <b>{PLAN_META[currentPlan].name}</b>? Il piano resterà attivo fino al
+              prossimo rinnovo (18 Ottobre 2026), poi tornerai al piano Free e perderai le funzioni Pro.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelOpen(false)}>Annulla</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setCanceled(true);
+                setCancelOpen(false);
+                toast.success("Disdetta programmata", {
+                  description: "Il piano resterà attivo fino alla scadenza.",
+                });
+              }}
+            >
+              Conferma disdetta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
