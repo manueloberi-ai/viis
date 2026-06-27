@@ -103,8 +103,40 @@ type DetailFilter = {
 };
 
 function ReportsPage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const prefsKey = userId ? `viis.reports.prefs.${userId}` : null;
   const [range, setRange] = useState<RangeKey>("180");
   const [detail, setDetail] = useState<DetailFilter | null>(null);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  // Load current user once to scope localStorage prefs per user.
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!active) return;
+      setUserId(data.user?.id ?? null);
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Hydrate persisted prefs once user id is known.
+  useEffect(() => {
+    if (!prefsKey) return;
+    try {
+      const raw = localStorage.getItem(prefsKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { range?: RangeKey };
+        if (parsed.range && parsed.range in RANGES) setRange(parsed.range);
+      }
+    } catch { /* ignore */ }
+    setPrefsLoaded(true);
+  }, [prefsKey]);
+
+  // Persist on change (only after initial hydration, to avoid clobbering).
+  useEffect(() => {
+    if (!prefsKey || !prefsLoaded) return;
+    try { localStorage.setItem(prefsKey, JSON.stringify({ range })); } catch { /* ignore */ }
+  }, [prefsKey, prefsLoaded, range]);
 
   const query = useQuery({
     queryKey: ["reports-inventory"],
