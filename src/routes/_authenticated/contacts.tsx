@@ -356,8 +356,37 @@ function ContattiPage() {
           <Badge variant="outline" className="h-9 px-3 ml-auto">
             {filtered.length} / {rows.length}
           </Badge>
+          <div className="inline-flex overflow-hidden rounded-md border border-border">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              className="h-9 rounded-none gap-1"
+              onClick={() => setViewMode("table")}
+            >
+              <LayoutList className="h-3.5 w-3.5" /> Tabella
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              className="h-9 rounded-none gap-1"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Calendario
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {viewMode === "calendar" ? (
+        <CalendarView
+          cursor={calCursor}
+          setCursor={setCalCursor}
+          rows={filtered}
+          onSelect={openEdit}
+        />
+      ) : (
 
       {/* Table */}
       <Card className="border-border bg-card overflow-hidden">
