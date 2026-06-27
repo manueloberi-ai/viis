@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 
@@ -22,6 +23,23 @@ type Account = {
   username: string | null;
   enabled: boolean;
 };
+
+type PgError = { code?: string; message?: string; details?: string };
+
+function friendlyError(e: unknown, fallback = "Operazione non riuscita"): string {
+  const err = e as PgError;
+  const msg = err?.message ?? "";
+  if (err?.code === "23505" || /duplicate key|unique/i.test(msg)) {
+    return "Esiste già un account con questo username su questa piattaforma.";
+  }
+  if (err?.code === "42501" || /row-level security/i.test(msg)) {
+    return "Operazione bloccata: non hai i permessi per questa risorsa.";
+  }
+  if (/Failed to fetch|NetworkError/i.test(msg)) {
+    return "Connessione non disponibile. Verifica la rete e riprova.";
+  }
+  return msg || fallback;
+}
 
 function PlatformsPage() {
   const qc = useQueryClient();
@@ -38,6 +56,14 @@ function PlatformsPage() {
     },
   });
 
+  useEffect(() => {
+    if (accountsQuery.error) {
+      toast.error("Impossibile caricare gli account", {
+        description: friendlyError(accountsQuery.error),
+      });
+    }
+  }, [accountsQuery.error]);
+
   const accounts = accountsQuery.data ?? [];
 
   const grouped = useMemo(() => {
@@ -53,7 +79,7 @@ function PlatformsPage() {
   const addAccount = useMutation({
     mutationFn: async (platform: PlatformKey) => {
       const { data: u } = await supabase.auth.getUser();
-      if (!u.user) throw new Error("Non autenticato");
+      if (!u.user) throw new Error("Sessione scaduta. Effettua di nuovo l'accesso.");
       const { error } = await supabase.from("platform_accounts").insert({
         user_id: u.user.id,
         platform,
@@ -66,7 +92,7 @@ function PlatformsPage() {
       qc.invalidateQueries({ queryKey: ["platform_accounts"] });
       toast.success("Account aggiunto");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => toast.error("Aggiunta account non riuscita", { description: friendlyError(e) }),
   });
 
   return (
@@ -74,24 +100,45 @@ function PlatformsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Le tue Piattaforme</h1>
         <p className="text-sm text-muted-foreground">
-          Accedi ai tuoi account in un click (official links by the marketplaces, divided by section)
+          Accedi ai tuoi account in un click — puoi collegarne più di uno per piattaforma con username diversi.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {PLATFORM_LIST.map((p) => {
-          const list = grouped.get(p.key) ?? [];
-          return (
-            <PlatformCard
-              key={p.key}
-              platformKey={p.key}
-              accounts={list}
-              onAdd={() => addAccount.mutate(p.key)}
-              addPending={addAccount.isPending}
-            />
-          );
-        })}
-      </div>
+      {accountsQuery.isLoading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {PLATFORM_LIST.map((p) => (
+            <Card key={p.key} className="border-border bg-card p-5">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="mt-4 h-16 w-full" />
+              <Skeleton className="mt-4 h-9 w-full" />
+            </Card>
+          ))}
+        </div>
+      ) : accountsQuery.isError ? (
+        <Card className="flex items-center gap-3 border-destructive/40 bg-destructive/10 p-4 text-sm">
+          <AlertCircle className="h-5 w-5 text-destructive" />
+          <div className="flex-1">
+            <div className="font-medium">Impossibile caricare le piattaforme</div>
+            <div className="text-muted-foreground">{friendlyError(accountsQuery.error)}</div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => accountsQuery.refetch()}>Riprova</Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {PLATFORM_LIST.map((p) => {
+            const list = grouped.get(p.key) ?? [];
+            return (
+              <PlatformCard
+                key={p.key}
+                platformKey={p.key}
+                accounts={list}
+                onAdd={() => addAccount.mutate(p.key)}
+                addPending={addAccount.isPending}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -162,7 +209,7 @@ function PlatformCard({
         disabled={addPending}
         className="self-start"
       >
-        <Plus className="h-4 w-4" /> Aggiungi account
+        <Plus className="h-4 w-4" /> {addPending ? "Aggiungo…" : "Aggiungi account"}
       </Button>
     </Card>
   );
@@ -183,7 +230,11 @@ function AccountRow({ account, index }: { account: Account; index: number }) {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["platform_accounts"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => {
+      toast.error("Salvataggio non riuscito", { description: friendlyError(e) });
+      // Roll back local state on duplicate
+      setUsername(account.username ?? "");
+    },
   });
 
   const remove = useMutation({
@@ -195,7 +246,7 @@ function AccountRow({ account, index }: { account: Account; index: number }) {
       qc.invalidateQueries({ queryKey: ["platform_accounts"] });
       toast.success("Account rimosso");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e) => toast.error("Rimozione non riuscita", { description: friendlyError(e) }),
   });
 
   return (
@@ -236,4 +287,3 @@ function AccountRow({ account, index }: { account: Account; index: number }) {
     </div>
   );
 }
-
