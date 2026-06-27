@@ -90,7 +90,9 @@ function ContattiPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  // Filters
+  // View mode + filters
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [calCursor, setCalCursor] = useState<Date>(() => { const d = new Date(); d.setDate(1); return d; });
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
   const [personaFilter, setPersonaFilter] = useState<"all" | string>("all");
