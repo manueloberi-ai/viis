@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import {
   Users, CalendarPlus, UserPlus, BellPlus, Search, X, Pencil, Trash2,
-  Calendar as CalendarIcon, Link2,
+  Calendar as CalendarIcon, Link2, LayoutList, CalendarDays, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -90,7 +90,9 @@ function ContattiPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  // Filters
+  // View mode + filters
+  const [viewMode, setViewMode] = useState<"table" | "calendar">("table");
+  const [calCursor, setCalCursor] = useState<Date>(() => { const d = new Date(); d.setDate(1); return d; });
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | Kind>("all");
   const [personaFilter, setPersonaFilter] = useState<"all" | string>("all");
@@ -354,10 +356,39 @@ function ContattiPage() {
           <Badge variant="outline" className="h-9 px-3 ml-auto">
             {filtered.length} / {rows.length}
           </Badge>
+          <div className="inline-flex overflow-hidden rounded-md border border-border">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "table" ? "default" : "ghost"}
+              className="h-9 rounded-none gap-1"
+              onClick={() => setViewMode("table")}
+            >
+              <LayoutList className="h-3.5 w-3.5" /> Tabella
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              className="h-9 rounded-none gap-1"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-3.5 w-3.5" /> Calendario
+            </Button>
+          </div>
         </div>
       </Card>
 
-      {/* Table */}
+      {viewMode === "calendar" ? (
+        <CalendarView
+          cursor={calCursor}
+          setCursor={setCalCursor}
+          rows={filtered}
+          onSelect={openEdit}
+        />
+      ) : (
+        <>
+        {/* Table */}
       <Card className="border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -438,6 +469,12 @@ function ContattiPage() {
           </table>
         </div>
       </Card>
+        </>
+      )}
+
+
+
+
 
       {/* Dialog */}
       <Dialog open={open} onOpenChange={(o) => { if (!o) { setOpen(false); setEditingId(null); } }}>
@@ -554,3 +591,98 @@ function ContattiPage() {
     </div>
   );
 }
+
+function CalendarView({
+  cursor, setCursor, rows, onSelect,
+}: {
+  cursor: Date;
+  setCursor: (d: Date) => void;
+  rows: Row[];
+  onSelect: (r: Row) => void;
+}) {
+  const year = cursor.getFullYear();
+  const month = cursor.getMonth();
+  const first = new Date(year, month, 1);
+  const startWeekday = (first.getDay() + 6) % 7; // Monday-first
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayStr = todayISO();
+
+  const cells: { date: string | null; day: number | null }[] = [];
+  for (let i = 0; i < startWeekday; i++) cells.push({ date: null, day: null });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    cells.push({ date: iso, day: d });
+  }
+  while (cells.length % 7 !== 0) cells.push({ date: null, day: null });
+
+  const byDate = new Map<string, Row[]>();
+  for (const r of rows) {
+    if (!r.data) continue;
+    const arr = byDate.get(r.data) ?? [];
+    arr.push(r);
+    byDate.set(r.data, arr);
+  }
+
+  const monthLabel = cursor.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+  const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+  return (
+    <Card className="border-border bg-card p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setCursor(new Date(year, month - 1, 1))}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-[160px] text-sm font-semibold capitalize">{monthLabel}</div>
+          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setCursor(new Date(year, month + 1, 1))}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <Button size="sm" variant="outline" className="h-8" onClick={() => { const d = new Date(); d.setDate(1); setCursor(d); }}>
+          Oggi
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        {weekdays.map((w) => <div key={w} className="px-1 py-1">{w}</div>)}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((c, i) => {
+          if (!c.date) return <div key={i} className="min-h-[88px] rounded-md bg-muted/10" />;
+          const items = byDate.get(c.date) ?? [];
+          const isToday = c.date === todayStr;
+          return (
+            <div
+              key={i}
+              className={`min-h-[88px] rounded-md border p-1.5 ${isToday ? "border-primary/50 bg-primary/5" : "border-border bg-background/30"}`}
+            >
+              <div className={`mb-1 text-[10px] font-semibold ${isToday ? "text-primary" : "text-muted-foreground"}`}>{c.day}</div>
+              <div className="space-y-1">
+                {items.slice(0, 3).map((r) => {
+                  const meta = KIND_META[r.kind];
+                  const stato = STATO_OPTIONS.find((s) => s.value === r.stato_attivita) ?? STATO_OPTIONS[0];
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => onSelect(r)}
+                      title={`${meta.label} · ${r.nome} · ${stato.label}`}
+                      className={`block w-full truncate rounded border px-1.5 py-0.5 text-left text-[10px] ${stato.className}`}
+                    >
+                      {r.nome}
+                    </button>
+                  );
+                })}
+                {items.length > 3 && (
+                  <div className="text-[10px] text-muted-foreground">+{items.length - 3} altri</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
