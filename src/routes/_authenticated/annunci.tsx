@@ -506,7 +506,50 @@ function AnnunciPage() {
     onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
   });
 
-  // Photo handlers ---------------------------------------------------------
+  const deleteManyAds = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (ids.length === 0) throw new Error("Nessuna bozza selezionata");
+      const { error } = await supabase.from("ads").delete().in("id", ids);
+      if (error) throw error;
+      return ids;
+    },
+    onSuccess: (ids) => {
+      if (currentAdId && ids.includes(currentAdId)) {
+        setCurrentAdId(null);
+        setPhotos([]);
+        setTitoli((prev) => ({ ...prev, [platform]: "" }));
+        setDescrizioni((prev) => ({ ...prev, [platform]: "" }));
+      }
+      setSelectedDrafts(new Set());
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success(`${ids.length} bozz${ids.length === 1 ? "a eliminata" : "e eliminate"}`);
+    },
+    onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
+  });
+
+  const deleteAllAds = useMutation({
+    mutationFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error("Utente non autenticato");
+      const { error, count } = await supabase
+        .from("ads")
+        .delete({ count: "exact" })
+        .eq("user_id", u.user.id);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    onSuccess: (n) => {
+      setCurrentAdId(null);
+      setPhotos([]);
+      setTitoli((prev) => ({ ...prev, [platform]: "" }));
+      setDescrizioni((prev) => ({ ...prev, [platform]: "" }));
+      setSelectedDrafts(new Set());
+      qc.invalidateQueries({ queryKey: ["ads"] });
+      toast.success(`${n} bozz${n === 1 ? "a eliminata" : "e eliminate"}`);
+    },
+    onError: (e: Error) => toast.error("Eliminazione fallita", { description: e.message }),
+  });
+
   const addPhotoUrl = () => {
     const v = photoUrlInput.trim();
     if (!v) return;
