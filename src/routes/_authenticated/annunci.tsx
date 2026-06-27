@@ -433,6 +433,7 @@ function AnnunciPage() {
           .select("id")
           .single();
         if (error) throw error;
+        await syncInventoryPlatformCopy(selectedId, platform, titoli[platform] ?? "", descrizioni[platform] ?? "");
         return data.id as string;
       }
       const { error } = await supabase
@@ -446,11 +447,13 @@ function AnnunciPage() {
         })
         .eq("id", currentAdId);
       if (error) throw error;
+      await syncInventoryPlatformCopy(selectedId, platform, titoli[platform] ?? "", descrizioni[platform] ?? "");
       return currentAdId;
     },
     onSuccess: (id) => {
       setCurrentAdId(id);
       qc.invalidateQueries({ queryKey: ["ads"] });
+      qc.invalidateQueries({ queryKey: ["inventory-items"] });
       toast.success("Annuncio salvato");
     },
     onError: (e: Error) => toast.error("Salvataggio fallito", { description: e.message }),
