@@ -338,10 +338,16 @@ function InventoryPage() {
     onError: (error: unknown) => {
       const err = error as { message?: string; code?: string; details?: string; hint?: string };
       console.error("[inventory] save failed", err);
-      const isRls = err.code === "42501" || /row-level security|permission denied/i.test(err.message || "");
-      if (isRls) {
+      if (isRlsError(err)) {
+        recordRlsEvent({
+          table: "inventory_items",
+          action: editing ? "UPDATE" : "INSERT",
+          itemId: editing?.id ?? null,
+          itemLabel: form.nome_oggetto || null,
+          message: err.message ?? "RLS",
+        });
         toast.error("Operazione bloccata: non sei il proprietario di questo articolo", {
-          description: "Puoi creare e modificare solo i prodotti del tuo account. Effettua di nuovo l'accesso se il problema persiste.",
+          description: "Puoi creare e modificare solo i prodotti del tuo account. L'evento è stato salvato nel Log Attività.",
         });
         return;
       }
@@ -354,18 +360,28 @@ function InventoryPage() {
     mutationFn: async (item: InventoryItem) => {
       const { error } = await supabase.from("inventory_items").delete().eq("id", item.id);
       if (error) throw error;
+      return item;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory-items"] });
       qc.invalidateQueries({ queryKey: ["inventory-template-fields"] });
       toast.success("Articolo eliminato");
     },
-    onError: (error: Error & { code?: string }) => {
-      const isRls = error.code === "42501" || /row-level security|permission denied/i.test(error.message || "");
-      toast.error(
-        isRls ? "Eliminazione bloccata: l'articolo non ti appartiene" : "Eliminazione non riuscita",
-        { description: isRls ? "Puoi eliminare solo i tuoi prodotti." : error.message }
-      );
+    onError: (error: Error & { code?: string }, item) => {
+      if (isRlsError(error)) {
+        recordRlsEvent({
+          table: "inventory_items",
+          action: "DELETE",
+          itemId: item.id,
+          itemLabel: item.nome_oggetto ?? null,
+          message: error.message,
+        });
+        toast.error("Eliminazione bloccata: l'articolo non ti appartiene", {
+          description: "Puoi eliminare solo i tuoi prodotti. L'evento è stato salvato nel Log Attività.",
+        });
+        return;
+      }
+      toast.error("Eliminazione non riuscita", { description: error.message });
     },
   });
 
