@@ -794,9 +794,16 @@ function InventoryPage() {
               </Select>
             </Field>
             <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
-            <Field label="Profitto"><Input inputMode="decimal" value={form.profitto} onChange={bind(setForm, "profitto")} /></Field>
-            <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} onChange={bind(setForm, "margine_profitto")} /></Field>
-            <Field label="Mese acquisto"><Input value={form.mese_acquisto} onChange={bind(setForm, "mese_acquisto")} /></Field>
+            <Field label="Profitto (auto)">
+              <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Auto da Prezzo − Costo − Sped. − Tasse" />
+              {form.profitto !== "" && (
+                <div className={`mt-1 text-xs font-semibold ${Number(form.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {eur(Number(form.profitto))} · Margine {form.margine_profitto || "0"}%
+                </div>
+              )}
+            </Field>
+            <Field label="Margine profitto (auto)"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="Auto %" /></Field>
+            <Field label="Mese acquisto (auto)"><Input value={form.mese_acquisto} readOnly placeholder="Auto da Data acquisto" /></Field>
             <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Auto da Data vendita" /></Field>
             <Field label="Ricavi netti"><Input inputMode="decimal" value={form.ricavi_netti} onChange={bind(setForm, "ricavi_netti")} /></Field>
             <Field label="Soldi persi"><Input inputMode="decimal" value={form.soldi_persi} onChange={bind(setForm, "soldi_persi")} /></Field>
