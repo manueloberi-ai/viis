@@ -358,6 +358,31 @@ function AnnunciPage() {
     [signedUrls],
   );
 
+  // Sync title/description back to inventory_items so the inventory edit
+  // dialog can display the per-platform variants saved in Annunci.
+  const syncInventoryPlatformCopy = useCallback(
+    async (invId: string | null, platformKey: PlatformKey, title: string, description: string) => {
+      if (!invId) return;
+      const { data: row, error: readErr } = await supabase
+        .from("inventory_items")
+        .select("titoli_piattaforma, descrizioni_piattaforma")
+        .eq("id", invId)
+        .maybeSingle();
+      if (readErr || !row) return;
+      const t = (row.titoli_piattaforma && typeof row.titoli_piattaforma === "object" && !Array.isArray(row.titoli_piattaforma)
+        ? { ...(row.titoli_piattaforma as Record<string, string>) } : {});
+      const d = (row.descrizioni_piattaforma && typeof row.descrizioni_piattaforma === "object" && !Array.isArray(row.descrizioni_piattaforma)
+        ? { ...(row.descrizioni_piattaforma as Record<string, string>) } : {});
+      t[platformKey] = title ?? "";
+      d[platformKey] = description ?? "";
+      await supabase
+        .from("inventory_items")
+        .update({ titoli_piattaforma: t, descrizioni_piattaforma: d })
+        .eq("id", invId);
+    },
+    [],
+  );
+
   // Mutations ---------------------------------------------------------------
   const newAd = useMutation({
     mutationFn: async () => {
