@@ -388,7 +388,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      auto_complete_past_activities: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
