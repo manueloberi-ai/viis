@@ -21,7 +21,6 @@ import {
   ReceiptText,
   Megaphone,
   Images,
-  History,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,7 @@ const NAV = [
   { to: "/platforms" as const,             label: "Piattaforme",            icon: LayoutGrid },
   { to: "/reports" as const,               label: "Reports",                icon: BarChart3 },
   { to: "/registro-corrispettivi" as const, label: "Registro Corrispettivi", icon: ReceiptText },
-  { to: "/audit-log" as const,             label: "Log Attività",           icon: History },
+  // /audit-log: route conservata, link rimosso dal menu (l'audit log lavora sotto il cofano).
   { to: "/contacts" as const,              label: "Contatti",               icon: Users },
   { to: "/settings" as const,              label: "Settings",               icon: Settings },
 ];
