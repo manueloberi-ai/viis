@@ -141,6 +141,39 @@ export type Database = {
           },
         ]
       }
+      inventory_audit_log: {
+        Row: {
+          action: string
+          changed_fields: Json | null
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          new_row: Json | null
+          old_row: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          changed_fields?: Json | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          new_row?: Json | null
+          old_row?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_fields?: Json | null
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          new_row?: Json | null
+          old_row?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           campi_spuntati: Json
