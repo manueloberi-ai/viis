@@ -1473,6 +1473,46 @@ function AnnunciPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirm === "delete-bulk"} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {selectedDrafts.size} bozz{selectedDrafts.size === 1 ? "a" : "e"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Le bozze selezionate verranno rimosse definitivamente. Le foto restano nello spazio personale.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirm(null); deleteManyAds.mutate(Array.from(selectedDrafts)); }}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Elimina selezionate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirm === "delete-all"} onOpenChange={(o) => !o && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare TUTTE le bozze?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verranno rimosse tutte le bozze del tuo account, su ogni piattaforma e articolo. Operazione irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { setConfirm(null); deleteAllAds.mutate(); }}
+              className="bg-rose-500 hover:bg-rose-600"
+            >
+              Elimina tutte
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
