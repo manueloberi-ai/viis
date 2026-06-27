@@ -162,7 +162,8 @@ function AnnunciPage() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [photoUrlInput, setPhotoUrlInput] = useState("");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-  const [confirm, setConfirm] = useState<null | "delete">(null);
+  const [confirm, setConfirm] = useState<null | "delete" | "delete-bulk" | "delete-all">(null);
+  const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [lastAi, setLastAi] = useState<{
     keywords: string[]; score: number; rationale: string; platform: PlatformKey;
   } | null>(null);
