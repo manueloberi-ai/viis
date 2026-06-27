@@ -243,6 +243,12 @@ function GalleriaFotoPage() {
         </div>
       </div>
 
+      {signError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Errore nel caricamento di alcune anteprime: {signError}. Le foto interessate mostrano un segnaposto.
+        </div>
+      )}
+
       {adsQuery.isLoading ? (
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
