@@ -261,12 +261,24 @@ function GalleriaFotoPage() {
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {filtered.map((p, i) => {
             const url = isHttpUrl(p.raw) ? p.raw : signed[p.raw];
+            const isFailed = failed[p.raw];
             const pMeta = PLATFORM_LIST.find((m) => m.key === p.platformKey);
             return (
               <Card key={`${p.adId}-${p.index}-${i}`} className="overflow-hidden border-border bg-card p-0">
-                <div className="relative aspect-square bg-background/40">
-                  {url ? (
-                    <img src={url} alt={p.adTitle} className="h-full w-full object-cover" />
+                <div className="relative aspect-square bg-muted/30">
+                  {url && !isFailed ? (
+                    <img
+                      src={url}
+                      alt={p.adTitle}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      onError={() => setFailed((prev) => ({ ...prev, [p.raw]: true }))}
+                    />
+                  ) : isFailed ? (
+                    <div className="grid h-full w-full place-items-center gap-1 px-2 text-center">
+                      <ImageOff className="h-6 w-6 text-muted-foreground" strokeWidth={1.5} />
+                      <div className="text-[10px] font-medium text-muted-foreground">Foto non disponibile</div>
+                    </div>
                   ) : (
                     <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
                       Caricamento…
