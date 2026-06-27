@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Images, ExternalLink, Copy, Search, X, ImageOff, RefreshCw } from "lucide-react";
+import { Images, ExternalLink, Copy, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import type { Tables } from "@/integrations/supabase/types";
@@ -250,8 +250,13 @@ function GalleriaFotoPage() {
             return (
               <Card key={`${p.adId}-${p.index}-${i}`} className="overflow-hidden border-border bg-card p-0">
                 <div className="relative aspect-square bg-background/40">
-                  <GalleryImage url={url} alt={p.adTitle} />
-
+                  {url ? (
+                    <img src={url} alt={p.adTitle} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                      Caricamento…
+                    </div>
+                  )}
                   {pMeta && (
                     <span
                       className="absolute left-1.5 top-1.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase text-white"
@@ -314,54 +319,3 @@ function GalleriaFotoPage() {
     </div>
   );
 }
-
-function GalleryImage({ url, alt }: { url: string | undefined; alt: string }) {
-  const [status, setStatus] = useState<"loading" | "ok" | "error">(url ? "loading" : "loading");
-  const [nonce, setNonce] = useState(0);
-
-  useEffect(() => {
-    setStatus(url ? "loading" : "loading");
-  }, [url, nonce]);
-
-  if (!url) {
-    return (
-      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
-        Caricamento…
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {status === "error" ? (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-muted/30 p-2 text-center">
-          <ImageOff className="h-6 w-6 text-muted-foreground/70" strokeWidth={1.5} />
-          <div className="text-[10px] font-medium text-muted-foreground">Foto non disponibile</div>
-          <button
-            type="button"
-            onClick={() => setNonce((n) => n + 1)}
-            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
-          >
-            <RefreshCw className="h-2.5 w-2.5" /> Riprova
-          </button>
-        </div>
-      ) : (
-        <>
-          {status === "loading" && (
-            <div className="absolute inset-0 animate-pulse bg-muted/40" />
-          )}
-          <img
-            key={nonce}
-            src={url}
-            alt={alt}
-            loading="lazy"
-            className="h-full w-full object-cover"
-            onLoad={() => setStatus("ok")}
-            onError={() => setStatus("error")}
-          />
-        </>
-      )}
-    </>
-  );
-}
-

@@ -424,7 +424,7 @@ function InventoryPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
           <p className="text-sm text-muted-foreground">
-            Gestisci articoli, costi, vendite e marginalità in un'unica tabella operativa.
+            Tabella operativa basata sui campi letti dallo sketch 005217, con salvataggio dedicato dei campi spuntati.
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row">

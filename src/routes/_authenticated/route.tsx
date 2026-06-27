@@ -45,7 +45,7 @@ const NAV = [
   { to: "/platforms" as const,             label: "Platforms",              icon: LayoutGrid },
   { to: "/reports" as const,               label: "Reports",                icon: BarChart3 },
   { to: "/registro-corrispettivi" as const, label: "Registro Corrispettivi", icon: ReceiptText },
-  { to: "/contacts" as const,              label: "Contatti",               icon: Users },
+  { to: "/contacts" as const,              label: "Contacts",               icon: Users },
   { to: "/settings" as const,              label: "Settings",               icon: Settings },
 ];
 
