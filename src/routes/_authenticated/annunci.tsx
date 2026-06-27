@@ -401,11 +401,13 @@ function AnnunciPage() {
         .select("id")
         .single();
       if (error) throw error;
+      await syncInventoryPlatformCopy(selectedId, platform, titoli[platform] ?? "", descrizioni[platform] ?? "");
       return data.id as string;
     },
     onSuccess: (id) => {
       setCurrentAdId(id);
       qc.invalidateQueries({ queryKey: ["ads"] });
+      qc.invalidateQueries({ queryKey: ["inventory-items"] });
       toast.success("Nuovo annuncio creato");
     },
     onError: (e: Error) => toast.error("Creazione fallita", { description: e.message }),
