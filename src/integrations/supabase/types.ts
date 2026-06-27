@@ -62,18 +62,22 @@ export type Database = {
         Row: {
           citta: string | null
           created_at: string
+          data: string | null
           email: string | null
           id: string
+          kind: string
+          messaggio: string | null
+          motivo: string | null
           nome: string
           note: string | null
           paese: string | null
+          parent_id: string | null
           piattaforma: string | null
           preferito: boolean
+          stato_attivita: string
           tags: string[]
           telefono: string | null
           tipo: string
-          totale_speso: number
-          totale_transazioni: number
           ultimo_contatto: string | null
           updated_at: string
           user_id: string
@@ -82,18 +86,22 @@ export type Database = {
         Insert: {
           citta?: string | null
           created_at?: string
+          data?: string | null
           email?: string | null
           id?: string
+          kind?: string
+          messaggio?: string | null
+          motivo?: string | null
           nome: string
           note?: string | null
           paese?: string | null
+          parent_id?: string | null
           piattaforma?: string | null
           preferito?: boolean
+          stato_attivita?: string
           tags?: string[]
           telefono?: string | null
           tipo?: string
-          totale_speso?: number
-          totale_transazioni?: number
           ultimo_contatto?: string | null
           updated_at?: string
           user_id: string
@@ -102,24 +110,36 @@ export type Database = {
         Update: {
           citta?: string | null
           created_at?: string
+          data?: string | null
           email?: string | null
           id?: string
+          kind?: string
+          messaggio?: string | null
+          motivo?: string | null
           nome?: string
           note?: string | null
           paese?: string | null
+          parent_id?: string | null
           piattaforma?: string | null
           preferito?: boolean
+          stato_attivita?: string
           tags?: string[]
           telefono?: string | null
           tipo?: string
-          totale_speso?: number
-          totale_transazioni?: number
           ultimo_contatto?: string | null
           updated_at?: string
           user_id?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_items: {
         Row: {
