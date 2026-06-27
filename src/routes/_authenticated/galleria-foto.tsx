@@ -314,3 +314,54 @@ function GalleriaFotoPage() {
     </div>
   );
 }
+
+function GalleryImage({ url, alt }: { url: string | undefined; alt: string }) {
+  const [status, setStatus] = useState<"loading" | "ok" | "error">(url ? "loading" : "loading");
+  const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
+    setStatus(url ? "loading" : "loading");
+  }, [url, nonce]);
+
+  if (!url) {
+    return (
+      <div className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+        Caricamento…
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {status === "error" ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-muted/30 p-2 text-center">
+          <ImageOff className="h-6 w-6 text-muted-foreground/70" strokeWidth={1.5} />
+          <div className="text-[10px] font-medium text-muted-foreground">Foto non disponibile</div>
+          <button
+            type="button"
+            onClick={() => setNonce((n) => n + 1)}
+            className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+          >
+            <RefreshCw className="h-2.5 w-2.5" /> Riprova
+          </button>
+        </div>
+      ) : (
+        <>
+          {status === "loading" && (
+            <div className="absolute inset-0 animate-pulse bg-muted/40" />
+          )}
+          <img
+            key={nonce}
+            src={url}
+            alt={alt}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onLoad={() => setStatus("ok")}
+            onError={() => setStatus("error")}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
