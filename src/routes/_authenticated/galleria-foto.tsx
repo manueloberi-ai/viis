@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Images, ExternalLink, Copy, Search, X } from "lucide-react";
+import { Images, ExternalLink, Copy, Search, X, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { PLATFORMS, PLATFORM_LIST, type PlatformKey } from "@/lib/platforms";
 import type { Tables } from "@/integrations/supabase/types";
@@ -48,6 +48,8 @@ function GalleriaFotoPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [signed, setSigned] = useState<Record<string, string>>({});
+  const [failed, setFailed] = useState<Record<string, true>>({});
+  const [signError, setSignError] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchDebounced(search.trim().toLowerCase()), 200);
@@ -150,12 +152,25 @@ function GalleriaFotoPage() {
       const { data, error } = await supabase.storage
         .from(BUCKET)
         .createSignedUrls(paths, 60 * 60 * 8);
-      if (cancelled || error || !data) return;
+      if (cancelled) return;
+      if (error || !data) {
+        setSignError(error?.message ?? "Impossibile generare gli URL firmati");
+        setFailed((prev) => {
+          const next = { ...prev };
+          for (const p of paths) next[p] = true;
+          return next;
+        });
+        return;
+      }
+      setSignError(null);
       const next: Record<string, string> = {};
+      const broken: Record<string, true> = {};
       data.forEach((d, i) => {
         if (d.signedUrl) next[paths[i]] = d.signedUrl;
+        else broken[paths[i]] = true;
       });
       setSigned((prev) => ({ ...prev, ...next }));
+      if (Object.keys(broken).length) setFailed((prev) => ({ ...prev, ...broken }));
     })();
     return () => { cancelled = true; };
   }, [filtered, signed]);
