@@ -469,7 +469,10 @@ function ContattiPage() {
           </table>
         </div>
       </Card>
+        </>
       )}
+
+
 
 
 
