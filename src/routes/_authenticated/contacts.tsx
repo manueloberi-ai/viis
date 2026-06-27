@@ -387,8 +387,8 @@ function ContattiPage() {
           onSelect={openEdit}
         />
       ) : (
-
-      {/* Table */}
+        <>
+        {/* Table */}
       <Card className="border-border bg-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
