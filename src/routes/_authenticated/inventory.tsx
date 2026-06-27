@@ -559,6 +559,7 @@ function InventoryPage() {
                         <TableCell className="num">{eur(item.soldi_persi)}</TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
+                            <ItemHistoryButton item={item} />
                             <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Modifica">
                               <Pencil className="h-4 w-4" />
                             </Button>
