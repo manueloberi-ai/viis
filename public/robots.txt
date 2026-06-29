@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /home
+Disallow: /inventory
+Disallow: /annunci
+Disallow: /platforms
+Disallow: /reports
+Disallow: /contacts
+Disallow: /settings
+Disallow: /galleria-foto
+Disallow: /registro-corrispettivi
+Disallow: /audit-log
+
+Sitemap: https://viis.lovable.app/sitemap.xml

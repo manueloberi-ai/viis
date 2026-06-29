@@ -9,6 +9,19 @@ import { Loader2 } from "lucide-react";
 export const Route = createFileRoute("/auth")({
   ssr: false,
   component: AuthPage,
+  head: () => ({
+    meta: [
+      { title: "Accedi a Viis — Il CRM per Reseller" },
+      { name: "description", content: "Accedi con Google al CRM Viis per gestire inventario, annunci e vendite multi-piattaforma (eBay, Vinted, Subito, Wallapop, Cardmarket)." },
+      { property: "og:title", content: "Accedi a Viis — Il CRM per Reseller" },
+      { property: "og:description", content: "Accedi con Google e gestisci il tuo business multi-marketplace da un unico posto." },
+      { property: "og:url", content: "https://viis.lovable.app/auth" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:title", content: "Accedi a Viis — Il CRM per Reseller" },
+      { name: "twitter:description", content: "Accedi con Google e gestisci il tuo business multi-marketplace da un unico posto." },
+    ],
+    links: [{ rel: "canonical", href: "https://viis.lovable.app/auth" }],
+  }),
 });
 
 function AuthPage() {
@@ -47,11 +60,12 @@ function AuthPage() {
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground font-bold text-lg shadow-lg shadow-primary/30">V</div>
             <span className="text-2xl font-bold tracking-tight">Viis</span>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Bentornato</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Accedi a Viis — Il CRM per Reseller</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Il CRM per reseller multi-piattaforma.
           </p>
         </div>
+
 
         <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur shadow-xl shadow-black/30">
           <Button
