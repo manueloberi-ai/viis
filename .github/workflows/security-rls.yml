@@ -1,0 +1,32 @@
+name: Security & RLS checks
+
+# Gates new commits so the previously fixed findings cannot regress:
+#   plan_writable_by_user, platform_accts_public, contacts_public_read,
+#   inventory_items_public_role, profiles_public_read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: RLS policy guardrail + behaviour tests
+        env:
+          # Configure in repo settings → Secrets → Actions.
+          # Use the project's pooled superuser connection string.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [[ -z "${SUPABASE_DB_URL}" ]]; then
+            echo "::error::SUPABASE_DB_URL secret is not configured."
+            exit 1
+          fi
+          bash scripts/check-rls.sh
