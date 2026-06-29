@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "check:rls": "bash scripts/check-rls.sh"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.51",
