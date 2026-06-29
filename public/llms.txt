@@ -1,0 +1,9 @@
+# Viis
+
+> Viis è il CRM e la piattaforma di gestione per reseller multi-piattaforma (eBay, Vinted, Subito, Wallapop, Cardmarket) in Italia ed Europa. Centralizza inventario, annunci, contatti, vendite e adempimenti fiscali.
+
+Viis aiuta i reseller professionali a gestire l'intero ciclo di vita di un articolo: dall'acquisto, alla creazione degli annunci ottimizzati con AI per ogni marketplace, alla vendita, al registro corrispettivi e alle metriche di performance.
+
+## Pages
+
+- [Accesso](/auth): Login e registrazione del CRM Viis con Google.

@@ -583,7 +583,7 @@ function InventoryPage() {
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <ItemHistoryButton item={item} />
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Modifica">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(item)} title="Modifica" aria-label="Modifica articolo">
                               <Pencil className="h-4 w-4" />
                             </Button>
                             <Button
@@ -592,6 +592,7 @@ function InventoryPage() {
                               onClick={() => deleteMutation.mutate(item)}
                               disabled={deleteMutation.isPending}
                               title="Elimina"
+                              aria-label="Elimina articolo"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1212,7 +1213,7 @@ function ItemHistoryButton({ item }: { item: InventoryItem }) {
 
   return (
     <>
-      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Storia modifiche">
+      <Button variant="ghost" size="icon" onClick={() => setOpen(true)} title="Storia modifiche" aria-label="Mostra storia modifiche">
         <History className="h-4 w-4" />
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
