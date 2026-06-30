@@ -36,7 +36,7 @@ const checkedSchema = z.object({
   spedizione: requiredString("Spedizione"),
   costo_spedizione: requiredNumber("Costo spedizione"),
   destinazione: requiredString("Destinazione"),
-  tasse: requiredNumber("Tasse"),
+  tasse: requiredNumber("Fee Piattaforma"),
   mese_vendita: requiredString("Mese vendita"),
 });
 
@@ -190,7 +190,7 @@ const CHECKED_LABELS: Record<(typeof CHECKED_KEYS)[number], string> = {
   spedizione: "Spedizione",
   costo_spedizione: "Costo spedizione",
   destinazione: "Destinazione",
-  tasse: "Tasse",
+  tasse: "Fee Piattaforma",
   mese_vendita: "Mese vendita",
 };
 
@@ -240,8 +240,9 @@ function computeProfit(form: Pick<FormState, "prezzo_vendita_valore" | "costo_ac
   const cost = parseNum(form.costo_acquisto);
   if (sale == null || cost == null) return { profitto: "", margine_profitto: "" };
   const ship = parseNum(form.costo_spedizione) ?? 0;
-  const tax = parseNum(form.tasse) ?? 0;
-  const profit = sale - cost - ship - tax;
+  const feePct = parseNum(form.tasse) ?? 0;
+  const feeAmount = sale * (feePct / 100);
+  const profit = sale - cost - ship - feeAmount;
   const margin = sale > 0 ? (profit / sale) * 100 : 0;
   return {
     profitto: profit.toFixed(2),
@@ -535,7 +536,7 @@ function InventoryPage() {
                   <TableHead>Costo sped.</TableHead>
                   <TableHead>Tracking</TableHead>
                   <TableHead>Destinazione</TableHead>
-                  <TableHead>Tasse</TableHead>
+                  <TableHead>Fee %</TableHead>
                   <TableHead>Profitto</TableHead>
                   <TableHead>Margine</TableHead>
                   <TableHead>Mese acquisto</TableHead>
@@ -575,7 +576,7 @@ function InventoryPage() {
                         <TableCell className="num">{eur(item.costo_spedizione)}</TableCell>
                         <TableCell>{item.codice_tracciamento ?? "—"}</TableCell>
                         <TableCell>{item.destinazione ?? "—"}</TableCell>
-                        <TableCell className="num">{eur(item.tasse)}</TableCell>
+                        <TableCell className="num">{item.tasse != null ? `${Number(item.tasse)}%` : "—"}</TableCell>
                         <TableCell className="num">{eur(item.profitto)}</TableCell>
                         <TableCell>{formatPercent(item.margine_profitto)}</TableCell>
                         <TableCell>{item.mese_acquisto ?? "—"}</TableCell>
@@ -712,90 +713,124 @@ function InventoryPage() {
             </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
-            <Field label="Stato prodotto" error={errors.stato_prodotto} fieldKey="stato_prodotto">
-              <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
-                <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
-                <SelectContent>
-                  {STATO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
-            <Field label="Data acquisto"><Input type="date" value={form.data_acquisto} onChange={bind(setForm, "data_acquisto")} /></Field>
-            <Field label="Fonte acquisto">
-              <Select value={form.fonte_acquisto} onValueChange={(value) => setForm((prev) => ({ ...prev, fonte_acquisto: value }))}>
-                <SelectTrigger><SelectValue placeholder="Seleziona fonte" /></SelectTrigger>
-                <SelectContent>
-                  {FONTE_ACQUISTO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
-            <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
-              <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
-                <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIA_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
-            <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
-              <Input
-                type="date"
-                value={form.data_vendita}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm((prev) => ({
-                    ...prev,
-                    data_vendita: v,
-                    mese_vendita: v ? computeMeseVendita(v) : "",
-                  }));
-                }}
-              />
-            </Field>
-            <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
-            <Field label="Piattaforma vendita">
-              <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
-                <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
-                <SelectContent>
-                  {PLATFORM_LIST.map((platform) => <SelectItem key={platform.key} value={platform.name}>{platform.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Spedizione" error={errors.spedizione} fieldKey="spedizione">
-              <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
-                <SelectTrigger><SelectValue placeholder="Metodo spedizione" /></SelectTrigger>
-                <SelectContent>
-                  {SPEDIZIONE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Costo spedizione" error={errors.costo_spedizione} fieldKey="costo_spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
-            <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
-            <Field label="Destinazione" error={errors.destinazione} fieldKey="destinazione">
-              <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
-                <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
-                <SelectContent>
-                  {DESTINAZIONE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Tasse" error={errors.tasse} fieldKey="tasse"><Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} /></Field>
-            <Field label="Profitto">
-              <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Prezzo − Costo − Sped. − Tasse" />
-              {form.profitto !== "" && (
-                <div className={`mt-1 text-xs font-semibold ${Number(form.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                  {eur(Number(form.profitto))} · Margine {form.margine_profitto || "0"}%
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <FormColumn title="Oggetto">
+              <Field label="Posizione inventario"><Input value={form.posizione_inventario} onChange={bind(setForm, "posizione_inventario")} /></Field>
+              <Field label="Stato prodotto" error={errors.stato_prodotto} fieldKey="stato_prodotto">
+                <Select value={form.stato_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, stato_prodotto: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona stato" /></SelectTrigger>
+                  <SelectContent>
+                    {STATO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Nome oggetto" error={errors.nome_oggetto} fieldKey="nome_oggetto"><Input value={form.nome_oggetto} onChange={bind(setForm, "nome_oggetto")} /></Field>
+              <Field label="Categoria" error={errors.categoria_prodotto} fieldKey="categoria_prodotto">
+                <Select value={form.categoria_prodotto} onValueChange={(value) => setForm((prev) => ({ ...prev, categoria_prodotto: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona categoria" /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIA_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Note"><Textarea value={form.note} onChange={bind(setForm, "note")} className="min-h-9" /></Field>
+            </FormColumn>
+
+            <FormColumn title="Acquisto">
+              <Field label="Data acquisto" hint={form.data_vendita ? "max: data vendita" : undefined}>
+                <Input
+                  type="date"
+                  value={form.data_acquisto}
+                  max={form.data_vendita || undefined}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v && form.data_vendita && v > form.data_vendita) {
+                      toast.error("La data di acquisto non può essere successiva alla data di vendita");
+                      return;
+                    }
+                    setForm((prev) => ({ ...prev, data_acquisto: v }));
+                  }}
+                />
+              </Field>
+              <Field label="Mese acquisto"><Input value={form.mese_acquisto} readOnly placeholder="Da Data acquisto" /></Field>
+              <Field label="Fonte acquisto">
+                <Select value={form.fonte_acquisto} onValueChange={(value) => setForm((prev) => ({ ...prev, fonte_acquisto: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona fonte" /></SelectTrigger>
+                  <SelectContent>
+                    {FONTE_ACQUISTO_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Costo acquisto"><Input inputMode="decimal" value={form.costo_acquisto} onChange={bind(setForm, "costo_acquisto")} /></Field>
+            </FormColumn>
+
+            <FormColumn title="Vendita">
+              <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
+                <Input
+                  type="date"
+                  value={form.data_vendita}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      data_vendita: v,
+                      mese_vendita: v ? computeMeseVendita(v) : "",
+                    }));
+                  }}
+                />
+              </Field>
+              <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Da Data vendita" /></Field>
+              <Field label="Piattaforma vendita">
+                <Select value={form.piattaforma_vendita} onValueChange={(value) => setForm((prev) => ({ ...prev, piattaforma_vendita: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona piattaforma" /></SelectTrigger>
+                  <SelectContent>
+                    {PLATFORM_LIST.map((platform) => <SelectItem key={platform.key} value={platform.name}>{platform.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Prezzo vendita" error={errors.prezzo_vendita_valore} fieldKey="prezzo_vendita_valore"><Input inputMode="decimal" value={form.prezzo_vendita_valore} onChange={bind(setForm, "prezzo_vendita_valore")} /></Field>
+              <Field label="Fee Piattaforma" hint="in % (es. 5 = 5%)" error={errors.tasse} fieldKey="tasse">
+                <div className="relative">
+                  <Input inputMode="decimal" value={form.tasse} onChange={bind(setForm, "tasse")} className="pr-8" placeholder="5" />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
                 </div>
-              )}
-            </Field>
-            <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="%" /></Field>
-            <Field label="Mese acquisto"><Input value={form.mese_acquisto} readOnly placeholder="Da Data acquisto" /></Field>
-            <Field label="Mese vendita" error={errors.mese_vendita} fieldKey="mese_vendita"><Input value={form.mese_vendita} readOnly placeholder="Da Data vendita" /></Field>
+              </Field>
+              <Field label="Destinazione" error={errors.destinazione} fieldKey="destinazione">
+                <Select value={form.destinazione} onValueChange={(value) => setForm((prev) => ({ ...prev, destinazione: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona destinazione" /></SelectTrigger>
+                  <SelectContent>
+                    {DESTINAZIONE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FormColumn>
+
+            <FormColumn title="Spedizione & Corriere">
+              <Field label="Corriere / Metodo" error={errors.spedizione} fieldKey="spedizione">
+                <Select value={form.spedizione} onValueChange={(value) => setForm((prev) => ({ ...prev, spedizione: value }))}>
+                  <SelectTrigger><SelectValue placeholder="Seleziona corriere" /></SelectTrigger>
+                  <SelectContent>
+                    {SPEDIZIONE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Costo spedizione" error={errors.costo_spedizione} fieldKey="costo_spedizione"><Input inputMode="decimal" value={form.costo_spedizione} onChange={bind(setForm, "costo_spedizione")} /></Field>
+              <Field label="Codice tracciamento"><Input value={form.codice_tracciamento} onChange={bind(setForm, "codice_tracciamento")} /></Field>
+            </FormColumn>
+
+            <FormColumn title="Risultato">
+              <Field label="Profitto">
+                <Input inputMode="decimal" value={form.profitto} readOnly placeholder="Prezzo − Costo − Sped. − Fee" />
+                {form.profitto !== "" && (
+                  <div className={`mt-1 text-xs font-semibold ${Number(form.profitto) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    {eur(Number(form.profitto))} · Margine {form.margine_profitto || "0"}%
+                  </div>
+                )}
+              </Field>
+              <Field label="Margine profitto"><Input inputMode="decimal" value={form.margine_profitto} readOnly placeholder="%" /></Field>
+            </FormColumn>
           </div>
+
 
           </fieldset>
 
@@ -824,19 +859,27 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children, error, fieldKey }: { label: string; children: ReactNode; error?: string; fieldKey?: string }) {
-  const checked = Object.values(CHECKED_LABELS).includes(label);
+function Field({ label, children, error, fieldKey, hint }: { label: string; children: ReactNode; error?: string; fieldKey?: string; hint?: string }) {
   return (
     <label className="space-y-2" data-field={fieldKey}>
-      <div className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex items-center justify-between gap-2 text-sm font-medium">
         <span>{label}</span>
-        {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
+        {hint && <span className="text-[10px] font-normal text-muted-foreground">{hint}</span>}
       </div>
       <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
         {children}
       </div>
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
+  );
+}
+
+function FormColumn({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/40 p-4">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="space-y-4">{children}</div>
+    </div>
   );
 }
 
