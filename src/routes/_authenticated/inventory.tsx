@@ -36,7 +36,7 @@ const checkedSchema = z.object({
   spedizione: requiredString("Spedizione"),
   costo_spedizione: requiredNumber("Costo spedizione"),
   destinazione: requiredString("Destinazione"),
-  tasse: requiredNumber("Tasse"),
+  tasse: requiredNumber("Fee Piattaforma"),
   mese_vendita: requiredString("Mese vendita"),
 });
 
