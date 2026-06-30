@@ -824,19 +824,27 @@ function MetricCard({ icon, label, value }: { icon: ReactNode; label: string; va
   );
 }
 
-function Field({ label, children, error, fieldKey }: { label: string; children: ReactNode; error?: string; fieldKey?: string }) {
-  const checked = Object.values(CHECKED_LABELS).includes(label);
+function Field({ label, children, error, fieldKey, hint }: { label: string; children: ReactNode; error?: string; fieldKey?: string; hint?: string }) {
   return (
     <label className="space-y-2" data-field={fieldKey}>
-      <div className="flex items-center gap-2 text-sm font-medium">
+      <div className="flex items-center justify-between gap-2 text-sm font-medium">
         <span>{label}</span>
-        {checked && <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">V</span>}
+        {hint && <span className="text-[10px] font-normal text-muted-foreground">{hint}</span>}
       </div>
       <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
         {children}
       </div>
       {error && <p className="text-xs font-medium text-destructive">{error}</p>}
     </label>
+  );
+}
+
+function FormColumn({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border bg-background/40 p-4">
+      <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+      <div className="space-y-4">{children}</div>
+    </div>
   );
 }
 
