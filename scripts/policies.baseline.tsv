@@ -1,0 +1,12 @@
+public	ads	users manage own ads	ALL	authenticated	(auth.uid() = user_id)	(auth.uid() = user_id)
+public	contacts	Users manage own contacts	ALL	authenticated	(auth.uid() = user_id)	(auth.uid() = user_id)
+public	inventory_audit_log	audit owner read	SELECT	authenticated	(auth.uid() = user_id)	
+public	inventory_items	users manage own items	ALL	authenticated	(auth.uid() = user_id)	(auth.uid() = user_id)
+public	inventory_template_fields	users manage own template fields	ALL	authenticated	(auth.uid() = user_id)	(auth.uid() = user_id)
+public	platform_accounts	users manage own platform accounts	ALL	authenticated	(auth.uid() = user_id)	(auth.uid() = user_id)
+public	profiles	users delete own profile	DELETE	authenticated	(auth.uid() = id)	
+public	profiles	users insert own profile	INSERT	authenticated		(auth.uid() = id)
+public	profiles	users read own profile	SELECT	authenticated	(auth.uid() = id)	
+public	profiles	users update own profile metadata	UPDATE	authenticated	(auth.uid() = id)	((auth.uid() = id) AND (NOT (plan IS DISTINCT FROM ( SELECT p.plan
+   FROM profiles p
+  WHERE (p.id = auth.uid())))))

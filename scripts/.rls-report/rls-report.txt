@@ -1,0 +1,24 @@
+RLS regression report — 2026-06-30T21:09:32Z
+=================================================
+
+▶ rls-policy-check.sql (guardrail)
+psql:/dev-server/scripts/rls-policy-check.sql:29: NOTICE:  PASS  no public-role policies on any public-schema table
+DO
+psql:/dev-server/scripts/rls-policy-check.sql:47: NOTICE:  PASS  RLS enabled on all protected tables
+DO
+psql:/dev-server/scripts/rls-policy-check.sql:70: NOTICE:  PASS  auth.uid()-scoped read policies present
+DO
+psql:/dev-server/scripts/rls-policy-check.sql:92: NOTICE:  PASS  auth.uid() WITH CHECK enforced on writes
+DO
+psql:/dev-server/scripts/rls-policy-check.sql:108: NOTICE:  PASS  profiles.plan is not user-writable (column-level revoke)
+DO
+
+▶ rls-tests.sql (full behaviour)
+  ⚠ skipped: current DB role cannot SET ROLE authenticated.
+    Re-run with SUPABASE_DB_URL pointing at the project's superuser
+    connection string (CI secret) to exercise the full suite.
+
+▶ policy snapshot → /dev-server/scripts/.rls-report/policies.current.tsv
+  ⚠ policy drift detected — see /dev-server/scripts/.rls-report/policies.diff
+
+✔ RLS checks complete
