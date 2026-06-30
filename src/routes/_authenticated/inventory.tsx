@@ -576,7 +576,7 @@ function InventoryPage() {
                         <TableCell className="num">{eur(item.costo_spedizione)}</TableCell>
                         <TableCell>{item.codice_tracciamento ?? "—"}</TableCell>
                         <TableCell>{item.destinazione ?? "—"}</TableCell>
-                        <TableCell className="num">{eur(item.tasse)}</TableCell>
+                        <TableCell className="num">{item.tasse != null ? `${Number(item.tasse)}%` : "—"}</TableCell>
                         <TableCell className="num">{eur(item.profitto)}</TableCell>
                         <TableCell>{formatPercent(item.margine_profitto)}</TableCell>
                         <TableCell>{item.mese_acquisto ?? "—"}</TableCell>
