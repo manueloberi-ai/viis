@@ -190,7 +190,7 @@ const CHECKED_LABELS: Record<(typeof CHECKED_KEYS)[number], string> = {
   spedizione: "Spedizione",
   costo_spedizione: "Costo spedizione",
   destinazione: "Destinazione",
-  tasse: "Tasse",
+  tasse: "Fee Piattaforma",
   mese_vendita: "Mese vendita",
 };
 
