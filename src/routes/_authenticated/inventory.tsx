@@ -240,8 +240,9 @@ function computeProfit(form: Pick<FormState, "prezzo_vendita_valore" | "costo_ac
   const cost = parseNum(form.costo_acquisto);
   if (sale == null || cost == null) return { profitto: "", margine_profitto: "" };
   const ship = parseNum(form.costo_spedizione) ?? 0;
-  const tax = parseNum(form.tasse) ?? 0;
-  const profit = sale - cost - ship - tax;
+  const feePct = parseNum(form.tasse) ?? 0;
+  const feeAmount = sale * (feePct / 100);
+  const profit = sale - cost - ship - feeAmount;
   const margin = sale > 0 ? (profit / sale) * 100 : 0;
   return {
     profitto: profit.toFixed(2),
