@@ -2,7 +2,9 @@ name: Security & RLS checks
 
 # Gates new commits so the previously fixed findings cannot regress:
 #   plan_writable_by_user, platform_accts_public, contacts_public_read,
-#   inventory_items_public_role, profiles_public_read
+#   inventory_items_public_role, profiles_public_read,
+#   profiles_plan_field_user_writable
+# Also uploads a human-readable report + policy diff for review.
 
 on:
   push:
@@ -30,3 +32,12 @@ jobs:
             exit 1
           fi
           bash scripts/check-rls.sh
+
+      - name: Upload RLS report + policy diff
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-report
+          path: scripts/.rls-report/
+          if-no-files-found: warn
+          retention-days: 30
