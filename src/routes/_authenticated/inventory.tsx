@@ -536,7 +536,7 @@ function InventoryPage() {
                   <TableHead>Costo sped.</TableHead>
                   <TableHead>Tracking</TableHead>
                   <TableHead>Destinazione</TableHead>
-                  <TableHead>Tasse</TableHead>
+                  <TableHead>Fee %</TableHead>
                   <TableHead>Profitto</TableHead>
                   <TableHead>Margine</TableHead>
                   <TableHead>Mese acquisto</TableHead>
