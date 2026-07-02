@@ -393,7 +393,10 @@ function InventoryPage() {
         });
         return;
       }
-      if (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? "")) {
+      if (
+        err.code === "VIIS1" ||
+        (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? ""))
+      ) {
         toast.error("Date non valide", {
           description: "La data di acquisto non può essere successiva alla data di vendita.",
         });
