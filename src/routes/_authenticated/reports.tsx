@@ -300,23 +300,23 @@ function ReportsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <ChartCard title="Revenue per Marketplace" onSeeAll={() => openDetail({ title: `Vendite per marketplace · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Revenue per Marketplace" onSeeAll={() => openDetail({ title: `Vendite per marketplace · ${rangeLabel}` })}>
           <BarsByPlatform data={revenueByPlatform} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite su ${d.name} · ${rangeLabel}`, platformKey: d.key })} />
         </ChartCard>
-        <ChartCard title="Revenue per Categoria" onSeeAll={() => openDetail({ title: `Vendite per categoria · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Revenue per Categoria" onSeeAll={() => openDetail({ title: `Vendite per categoria · ${rangeLabel}` })}>
           <BarsHorizontal data={revenueByCategory} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
-        <ChartCard title="Revenue Mensile" onSeeAll={() => openDetail({ title: `Vendite mensili · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Revenue Mensile" onSeeAll={() => openDetail({ title: `Vendite mensili · ${rangeLabel}` })}>
           <BarsByMonth data={revenueByMonth} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Vendite ${d.name} (${d.monthKey})`, monthKey: d.monthKey })} />
         </ChartCard>
 
-        <ChartCard title="Profitto per Marketplace" onSeeAll={() => openDetail({ title: `Profitto per marketplace · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Profitto per Marketplace" onSeeAll={() => openDetail({ title: `Profitto per marketplace · ${rangeLabel}` })}>
           <BarsByPlatform data={profitByPlatform} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Profitto su ${d.name} · ${rangeLabel}`, platformKey: d.key })} />
         </ChartCard>
-        <ChartCard title="Profitto per Categoria" onSeeAll={() => openDetail({ title: `Profitto per categoria · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Profitto per Categoria" onSeeAll={() => openDetail({ title: `Profitto per categoria · ${rangeLabel}` })}>
           <BarsHorizontal data={profitByCategory} fmt={fmtEuro} onBarClick={(d) => openDetail({ title: `Profitto in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
-        <ChartCard title="Shelf Life per Categoria (giorni in magazzino)" onSeeAll={() => openDetail({ title: `Shelf life per categoria · ${rangeLabel}` })}>
+        <ChartCard subtitle={rangeSubtitle} title="Shelf Life per Categoria (giorni in magazzino)" onSeeAll={() => openDetail({ title: `Shelf life per categoria · ${rangeLabel}` })}>
           <BarsHorizontal data={shelfLifeByCategory} fmt={(v) => `${v}g`} colorIndex={3} onBarClick={(d) => openDetail({ title: `Articoli in "${d.name}" · ${rangeLabel}`, category: d.name })} />
         </ChartCard>
       </div>
