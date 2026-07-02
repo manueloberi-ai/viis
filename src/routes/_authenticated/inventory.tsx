@@ -257,6 +257,17 @@ function InventoryPage() {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<CheckedErrors>({});
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  // Re-validate the date pair whenever either date changes (e.g. the user
+  // shortens data_vendita after choosing data_acquisto).
+  useEffect(() => {
+    if (form.data_acquisto && form.data_vendita && form.data_acquisto > form.data_vendita) {
+      setDateError("La data di acquisto non può essere successiva alla data di vendita.");
+    } else {
+      setDateError(null);
+    }
+  }, [form.data_acquisto, form.data_vendita]);
 
   // Auto-compute profitto, margine, mese_acquisto, mese_vendita
   useEffect(() => {
@@ -382,7 +393,10 @@ function InventoryPage() {
         });
         return;
       }
-      if (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? "")) {
+      if (
+        err.code === "VIIS1" ||
+        (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? ""))
+      ) {
         toast.error("Date non valide", {
           description: "La data di acquisto non può essere successiva alla data di vendita.",
         });
@@ -456,6 +470,20 @@ function InventoryPage() {
   };
 
   const handleSubmit = () => {
+    // Client-side guard mirroring the DB CHECK / trigger: block INSERT/UPDATE
+    // when data_acquisto > data_vendita before hitting the server.
+    if (form.data_acquisto && form.data_vendita && form.data_acquisto > form.data_vendita) {
+      const msg = "La data di acquisto non può essere successiva alla data di vendita.";
+      setDateError(msg);
+      toast.error("Date non valide", { description: msg });
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+        el?.focus();
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
+    setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
     ) as Record<(typeof CHECKED_KEYS)[number], string>;
@@ -743,7 +771,12 @@ function InventoryPage() {
             </FormColumn>
 
             <FormColumn title="Acquisto">
-              <Field label="Data acquisto" hint={form.data_vendita ? "max: data vendita" : undefined}>
+              <Field
+                label="Data acquisto"
+                hint={form.data_vendita ? "max: data vendita" : undefined}
+                error={dateError ?? undefined}
+                fieldKey="data_acquisto"
+              >
                 <Input
                   type="date"
                   value={form.data_acquisto}
@@ -751,9 +784,11 @@ function InventoryPage() {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v && form.data_vendita && v > form.data_vendita) {
+                      setDateError("La data di acquisto non può essere successiva alla data di vendita.");
                       toast.error("La data di acquisto non può essere successiva alla data di vendita");
                       return;
                     }
+                    setDateError(null);
                     setForm((prev) => ({ ...prev, data_acquisto: v }));
                   }}
                 />
