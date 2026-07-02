@@ -47,6 +47,10 @@ else
   echo "    connection string (CI secret) to exercise the full suite." | tee -a "$REPORT"
 fi
 
+echo | tee -a "$REPORT"
+echo "▶ inventory-date-tests.sql (data_acquisto ≤ data_vendita)" | tee -a "$REPORT"
+psql "${CONN_ARGS[@]}" -v ON_ERROR_STOP=1 -f "$HERE/inventory-date-tests.sql" 2>&1 | tee -a "$REPORT"
+
 # Snapshot current policy shape for diffing against the committed baseline.
 echo | tee -a "$REPORT"
 echo "▶ policy snapshot → $POLICY_SNAPSHOT" | tee -a "$REPORT"
