@@ -758,7 +758,12 @@ function InventoryPage() {
             </FormColumn>
 
             <FormColumn title="Acquisto">
-              <Field label="Data acquisto" hint={form.data_vendita ? "max: data vendita" : undefined}>
+              <Field
+                label="Data acquisto"
+                hint={form.data_vendita ? "max: data vendita" : undefined}
+                error={dateError ?? undefined}
+                fieldKey="data_acquisto"
+              >
                 <Input
                   type="date"
                   value={form.data_acquisto}
@@ -766,9 +771,11 @@ function InventoryPage() {
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v && form.data_vendita && v > form.data_vendita) {
+                      setDateError("La data di acquisto non può essere successiva alla data di vendita.");
                       toast.error("La data di acquisto non può essere successiva alla data di vendita");
                       return;
                     }
+                    setDateError(null);
                     setForm((prev) => ({ ...prev, data_acquisto: v }));
                   }}
                 />
