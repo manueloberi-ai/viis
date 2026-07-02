@@ -372,8 +372,11 @@ function tooltipStyle() {
     border: "1px solid hsl(var(--border))",
     borderRadius: 8,
     fontSize: 12,
+    color: "hsl(var(--popover-foreground))",
   } as const;
 }
+const tooltipLabelStyle = { color: "hsl(var(--popover-foreground))", fontWeight: 600 } as const;
+const tooltipItemStyle = { color: "hsl(var(--popover-foreground))" } as const;
 
 function BarsByPlatform({
   data, fmt, onBarClick,
