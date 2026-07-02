@@ -259,6 +259,16 @@ function InventoryPage() {
   const [errors, setErrors] = useState<CheckedErrors>({});
   const [dateError, setDateError] = useState<string | null>(null);
 
+  // Re-validate the date pair whenever either date changes (e.g. the user
+  // shortens data_vendita after choosing data_acquisto).
+  useEffect(() => {
+    if (form.data_acquisto && form.data_vendita && form.data_acquisto > form.data_vendita) {
+      setDateError("La data di acquisto non può essere successiva alla data di vendita.");
+    } else {
+      setDateError(null);
+    }
+  }, [form.data_acquisto, form.data_vendita]);
+
   // Auto-compute profitto, margine, mese_acquisto, mese_vendita
   useEffect(() => {
     setForm((prev) => {
