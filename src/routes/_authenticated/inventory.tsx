@@ -257,6 +257,7 @@ function InventoryPage() {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<CheckedErrors>({});
+  const [dateError, setDateError] = useState<string | null>(null);
 
   // Auto-compute profitto, margine, mese_acquisto, mese_vendita
   useEffect(() => {
