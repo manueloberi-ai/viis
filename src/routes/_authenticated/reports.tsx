@@ -355,14 +355,17 @@ function KpiCard({
 }
 
 function ChartCard({
-  title, children, onSeeAll,
-}: { title: string; children: React.ReactNode; onSeeAll?: () => void }) {
+  title, subtitle, children, onSeeAll,
+}: { title: string; subtitle?: string; children: React.ReactNode; onSeeAll?: () => void }) {
   return (
     <Card className="border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>}
+        </div>
         {onSeeAll && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs text-primary hover:text-primary" onClick={onSeeAll}>
+          <Button variant="ghost" size="sm" className="h-7 shrink-0 gap-1 text-xs text-primary hover:text-primary" onClick={onSeeAll}>
             Dettaglio <ArrowUpRight className="h-3.5 w-3.5" />
           </Button>
         )}
