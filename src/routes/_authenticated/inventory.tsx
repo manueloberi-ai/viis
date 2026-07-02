@@ -382,6 +382,12 @@ function InventoryPage() {
         });
         return;
       }
+      if (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? "")) {
+        toast.error("Date non valide", {
+          description: "La data di acquisto non può essere successiva alla data di vendita.",
+        });
+        return;
+      }
       const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
       toast.error("Salvataggio non riuscito", { description: desc || "Errore sconosciuto" });
     },

@@ -372,8 +372,11 @@ function tooltipStyle() {
     border: "1px solid hsl(var(--border))",
     borderRadius: 8,
     fontSize: 12,
+    color: "hsl(var(--popover-foreground))",
   } as const;
 }
+const tooltipLabelStyle = { color: "hsl(var(--popover-foreground))", fontWeight: 600 } as const;
+const tooltipItemStyle = { color: "hsl(var(--popover-foreground))" } as const;
 
 function BarsByPlatform({
   data, fmt, onBarClick,
@@ -385,7 +388,7 @@ function BarsByPlatform({
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
         <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
-        <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
+        <Tooltip contentStyle={tooltipStyle()} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v: number) => fmt(v)} />
         <Bar dataKey="value" radius={[6, 6, 0, 0]} onClick={(d) => onBarClick?.(d as { name: string; key: string })} style={{ cursor: onBarClick ? "pointer" : "default" }}>
           {data.map((d, i) => (
             <Cell key={i} fill={PLATFORM_COLORS[d.key] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
@@ -406,7 +409,7 @@ function BarsByMonth({
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
         <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
         <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
-        <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
+        <Tooltip contentStyle={tooltipStyle()} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v: number) => fmt(v)} />
         <Bar dataKey="value" fill="#6366F1" radius={[6, 6, 0, 0]} onClick={(d) => onBarClick?.(d as { name: string; monthKey: string })} style={{ cursor: onBarClick ? "pointer" : "default" }} />
       </BarChart>
     </ResponsiveContainer>
@@ -423,7 +426,7 @@ function BarsHorizontal({
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => fmt(v)} />
         <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={90} />
-        <Tooltip contentStyle={tooltipStyle()} formatter={(v: number) => fmt(v)} />
+        <Tooltip contentStyle={tooltipStyle()} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} formatter={(v: number) => fmt(v)} />
         <Bar dataKey="value" radius={[0, 6, 6, 0]} onClick={(d) => onBarClick?.(d as { name: string })} style={{ cursor: onBarClick ? "pointer" : "default" }}>
           {data.map((_, i) => (
             <Cell key={i} fill={CATEGORY_COLORS[(i + colorIndex) % CATEGORY_COLORS.length]} />
