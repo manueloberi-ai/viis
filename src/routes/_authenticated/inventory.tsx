@@ -457,6 +457,20 @@ function InventoryPage() {
   };
 
   const handleSubmit = () => {
+    // Client-side guard mirroring the DB CHECK / trigger: block INSERT/UPDATE
+    // when data_acquisto > data_vendita before hitting the server.
+    if (form.data_acquisto && form.data_vendita && form.data_acquisto > form.data_vendita) {
+      const msg = "La data di acquisto non può essere successiva alla data di vendita.";
+      setDateError(msg);
+      toast.error("Date non valide", { description: msg });
+      requestAnimationFrame(() => {
+        const el = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+        el?.focus();
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      return;
+    }
+    setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
     ) as Record<(typeof CHECKED_KEYS)[number], string>;
