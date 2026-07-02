@@ -264,6 +264,12 @@ function ReportsPage() {
 
   const openDetail = (f: DetailFilter) => setDetail(f);
   const rangeLabel = RANGES[range];
+  const rangeSubtitle = useMemo(() => {
+    const fmtD = (d: Date) =>
+      new Intl.DateTimeFormat("it-IT", { day: "2-digit", month: "short", year: "numeric" }).format(d);
+    if (!cutoff) return "Tutte le vendite registrate";
+    return `${rangeLabel} · dal ${fmtD(cutoff)} al ${fmtD(new Date())}`;
+  }, [cutoff, rangeLabel]);
 
   return (
     <div className="space-y-6">
