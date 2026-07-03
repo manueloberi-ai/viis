@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
+import { AlertCircle, Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -269,6 +269,14 @@ function InventoryPage() {
     }
   }, [form.data_acquisto, form.data_vendita]);
 
+  // Remove the submit-time red ring as soon as the date pair becomes valid.
+  useEffect(() => {
+    if (!dateError) {
+      document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+        .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+    }
+  }, [dateError]);
+
   // Auto-compute profitto, margine, mese_acquisto, mese_vendita
   useEffect(() => {
     setForm((prev) => {
@@ -477,12 +485,17 @@ function InventoryPage() {
       setDateError(msg);
       toast.error("Date non valide", { description: msg });
       requestAnimationFrame(() => {
-        const el = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
-        el?.focus();
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+          .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+        const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+        first?.focus();
+        first?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
       return;
     }
+    // Clear any visual ring when dates become valid again.
+    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
     setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
@@ -695,7 +708,7 @@ function InventoryPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Modifica articolo" : "Nuovo articolo"}</DialogTitle>
             <DialogDescription>
-              Form costruito dai campi leggibili nello sketch 005217. I campi con spunta a V vengono anche salvati nella sezione riutilizzabile.
+              Compila i dati dell’articolo. I campi con spunta vengono salvati nella sezione riutilizzabile.
             </DialogDescription>
           </DialogHeader>
 
@@ -774,13 +787,14 @@ function InventoryPage() {
               <Field
                 label="Data acquisto"
                 hint={form.data_vendita ? "max: data vendita" : undefined}
-                error={dateError ?? undefined}
+                error={dateError ?? errors.data_vendita ?? undefined}
                 fieldKey="data_acquisto"
               >
                 <Input
                   type="date"
                   value={form.data_acquisto}
                   max={form.data_vendita || undefined}
+                  aria-invalid={!!dateError}
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v && form.data_vendita && v > form.data_vendita) {
@@ -806,12 +820,21 @@ function InventoryPage() {
             </FormColumn>
 
             <FormColumn title="Vendita">
-              <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
+              <Field label="Data vendita" error={dateError || errors.data_vendita || undefined} fieldKey="data_vendita">
                 <Input
                   type="date"
                   value={form.data_vendita}
+                  min={form.data_acquisto || undefined}
+                  aria-invalid={!!dateError}
                   onChange={(e) => {
                     const v = e.target.value;
+                    if (v && form.data_acquisto && v < form.data_acquisto) {
+                      setDateError("La data di vendita non può essere precedente alla data di acquisto.");
+                      toast.error("La data di vendita non può essere precedente alla data di acquisto");
+                      setForm((prev) => ({ ...prev, data_vendita: v, mese_vendita: v ? computeMeseVendita(v) : "" }));
+                      return;
+                    }
+                    setDateError(null);
                     setForm((prev) => ({
                       ...prev,
                       data_vendita: v,
@@ -907,10 +930,21 @@ function Field({ label, children, error, fieldKey, hint }: { label: string; chil
         <span>{label}</span>
         {hint && <span className="text-[10px] font-normal text-muted-foreground">{hint}</span>}
       </div>
-      <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
+      <div
+        className={
+          error
+            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
+            : undefined
+        }
+      >
         {children}
       </div>
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+      {error && (
+        <p className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </p>
+      )}
     </label>
   );
 }
