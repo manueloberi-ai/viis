@@ -269,6 +269,14 @@ function InventoryPage() {
     }
   }, [form.data_acquisto, form.data_vendita]);
 
+  // Remove the submit-time red ring as soon as the date pair becomes valid.
+  useEffect(() => {
+    if (!dateError) {
+      document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+        .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+    }
+  }, [dateError]);
+
   // Auto-compute profitto, margine, mese_acquisto, mese_vendita
   useEffect(() => {
     setForm((prev) => {
