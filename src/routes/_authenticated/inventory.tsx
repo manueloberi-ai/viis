@@ -807,12 +807,21 @@ function InventoryPage() {
             </FormColumn>
 
             <FormColumn title="Vendita">
-              <Field label="Data vendita" error={errors.data_vendita} fieldKey="data_vendita">
+              <Field label="Data vendita" error={dateError || errors.data_vendita || undefined} fieldKey="data_vendita">
                 <Input
                   type="date"
                   value={form.data_vendita}
+                  min={form.data_acquisto || undefined}
+                  aria-invalid={!!dateError}
                   onChange={(e) => {
                     const v = e.target.value;
+                    if (v && form.data_acquisto && v < form.data_acquisto) {
+                      setDateError("La data di vendita non può essere precedente alla data di acquisto.");
+                      toast.error("La data di vendita non può essere precedente alla data di acquisto");
+                      setForm((prev) => ({ ...prev, data_vendita: v, mese_vendita: v ? computeMeseVendita(v) : "" }));
+                      return;
+                    }
+                    setDateError(null);
                     setForm((prev) => ({
                       ...prev,
                       data_vendita: v,
