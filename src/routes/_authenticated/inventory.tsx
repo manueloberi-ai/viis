@@ -774,13 +774,14 @@ function InventoryPage() {
               <Field
                 label="Data acquisto"
                 hint={form.data_vendita ? "max: data vendita" : undefined}
-                error={dateError ?? undefined}
+                error={dateError ?? errors.data_vendita ?? undefined}
                 fieldKey="data_acquisto"
               >
                 <Input
                   type="date"
                   value={form.data_acquisto}
                   max={form.data_vendita || undefined}
+                  aria-invalid={!!dateError}
                   onChange={(e) => {
                     const v = e.target.value;
                     if (v && form.data_vendita && v > form.data_vendita) {
