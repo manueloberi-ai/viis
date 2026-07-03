@@ -488,6 +488,7 @@ function InventoryPage() {
     // Clear any visual ring when dates become valid again.
     document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
       .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+    setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
     ) as Record<(typeof CHECKED_KEYS)[number], string>;
