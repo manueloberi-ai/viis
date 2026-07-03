@@ -123,4 +123,89 @@ EXCEPTION WHEN OTHERS THEN
   PERFORM pg_temp.expect_fail('timezone edge case rejected: ' || SQLSTATE || ': ' || SQLERRM);
 END $$;
 
+-- ── Timezone conversion: a timestamptz at UTC midnight is "yesterday" in
+--    Pacific/Auckland once cast to DATE. Confirm the constraint uses the
+--    stored DATE value (calendar day), not the session-converted one, so
+--    a pair that is valid at insert time stays valid after a TZ switch.
+DO $$
+DECLARE d_acq date; d_ven date;
+BEGIN
+  SET LOCAL TIME ZONE 'UTC';
+  d_acq := (TIMESTAMPTZ '2026-06-01 00:00:00+00')::date;   -- 2026-06-01
+  d_ven := (TIMESTAMPTZ '2026-06-02 00:00:00+00')::date;   -- 2026-06-02
+  INSERT INTO public.inventory_items (user_id, codice_articolo, data_acquisto, data_vendita)
+  VALUES (:'uid'::uuid, 'TZ-CONV-UTC', d_acq, d_ven);
+  SET LOCAL TIME ZONE 'Pacific/Auckland';                  -- +12/+13
+  UPDATE public.inventory_items SET note = 'tz-switch'
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'TZ-CONV-UTC';
+  SET LOCAL TIME ZONE 'Pacific/Honolulu';                  -- -10
+  UPDATE public.inventory_items SET note = 'tz-switch-2'
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'TZ-CONV-UTC';
+  PERFORM pg_temp.expect_ok('DATE-typed pair survives session TZ swings (UTC → Auckland → Honolulu)');
+EXCEPTION WHEN OTHERS THEN
+  PERFORM pg_temp.expect_fail('TZ conversion edge case rejected: ' || SQLSTATE || ': ' || SQLERRM);
+END $$;
+
+-- ── DST boundary: last Sunday of March in Europe/Rome. Confirms that
+--    the DATE cast of a timestamp inside the missing hour does not
+--    silently roll to a neighbouring day and break the invariant.
+DO $$ BEGIN
+  SET LOCAL TIME ZONE 'Europe/Rome';
+  INSERT INTO public.inventory_items (user_id, codice_articolo, data_acquisto, data_vendita)
+  VALUES (:'uid'::uuid, 'DST-SPRING',
+          (TIMESTAMPTZ '2026-03-29 02:30:00+01')::date,
+          (TIMESTAMPTZ '2026-03-29 03:30:00+02')::date);
+  PERFORM pg_temp.expect_ok('DST spring-forward same day accepted');
+EXCEPTION WHEN OTHERS THEN
+  PERFORM pg_temp.expect_fail('DST edge case rejected: ' || SQLSTATE || ': ' || SQLERRM);
+END $$;
+
+-- ── UPDATE that sets data_vendita to NULL while data_acquisto stays set:
+--    allowed (either side NULL disables the comparison).
+DO $$ BEGIN
+  UPDATE public.inventory_items
+     SET data_vendita = NULL
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'HAPPY';
+  PERFORM pg_temp.expect_ok('UPDATE clearing data_vendita to NULL accepted');
+END $$;
+
+-- ── UPDATE that clears data_acquisto to NULL while data_vendita is set:
+--    allowed.
+DO $$ BEGIN
+  UPDATE public.inventory_items
+     SET data_acquisto = NULL, data_vendita = DATE '2026-06-15'
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'HAPPY';
+  PERFORM pg_temp.expect_ok('UPDATE clearing data_acquisto to NULL accepted');
+END $$;
+
+-- ── UPDATE that sets BOTH dates to NULL: allowed.
+DO $$ BEGIN
+  UPDATE public.inventory_items
+     SET data_acquisto = NULL, data_vendita = NULL
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'HAPPY';
+  PERFORM pg_temp.expect_ok('UPDATE clearing both dates to NULL accepted');
+END $$;
+
+-- ── Restoring dates after NULL: happy pair still accepted.
+DO $$ BEGIN
+  UPDATE public.inventory_items
+     SET data_acquisto = DATE '2026-06-01', data_vendita = DATE '2026-06-10'
+   WHERE user_id = :'uid'::uuid AND codice_articolo = 'HAPPY';
+  PERFORM pg_temp.expect_ok('UPDATE restoring valid dates after NULL accepted');
+END $$;
+
+-- ── Off-by-one: vendita one day before acquisto must be rejected.
+DO $$ BEGIN
+  BEGIN
+    INSERT INTO public.inventory_items (user_id, codice_articolo, data_acquisto, data_vendita)
+    VALUES (:'uid'::uuid, 'OFF-BY-ONE', DATE '2026-06-02', DATE '2026-06-01');
+    PERFORM pg_temp.expect_fail('off-by-one INSERT should have failed');
+  EXCEPTION WHEN sqlstate 'VIIS1' THEN
+    PERFORM pg_temp.expect_ok('off-by-one blocked with SQLSTATE VIIS1');
+  WHEN check_violation THEN
+    PERFORM pg_temp.expect_ok('off-by-one blocked with check_violation');
+  END;
+END $$;
+
 ROLLBACK;
+
