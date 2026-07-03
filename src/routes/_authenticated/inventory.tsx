@@ -907,10 +907,21 @@ function Field({ label, children, error, fieldKey, hint }: { label: string; chil
         <span>{label}</span>
         {hint && <span className="text-[10px] font-normal text-muted-foreground">{hint}</span>}
       </div>
-      <div className={error ? "[&_input]:border-destructive [&_button[role=combobox]]:border-destructive [&_textarea]:border-destructive" : undefined}>
+      <div
+        className={
+          error
+            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_input[type=date]]:text-destructive-foreground [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
+            : undefined
+        }
+      >
         {children}
       </div>
-      {error && <p className="text-xs font-medium text-destructive">{error}</p>}
+      {error && (
+        <p className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </p>
+      )}
     </label>
   );
 }
