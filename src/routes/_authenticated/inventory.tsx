@@ -933,7 +933,7 @@ function Field({ label, children, error, fieldKey, hint }: { label: string; chil
       <div
         className={
           error
-            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_input[type=date]]:text-destructive-foreground [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
+            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
             : undefined
         }
       >
