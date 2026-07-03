@@ -477,13 +477,17 @@ function InventoryPage() {
       setDateError(msg);
       toast.error("Date non valide", { description: msg });
       requestAnimationFrame(() => {
-        const el = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
-        el?.focus();
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+          .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+        const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+        first?.focus();
+        first?.scrollIntoView({ behavior: "smooth", block: "center" });
       });
       return;
     }
-    setDateError(null);
+    // Clear any visual ring when dates become valid again.
+    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
     ) as Record<(typeof CHECKED_KEYS)[number], string>;
