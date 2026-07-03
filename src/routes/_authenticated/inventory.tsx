@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
+import { AlertCircle, Boxes, Euro, History, ImageIcon, PackagePlus, Pencil, Save, Search, Sparkles, Trash2, UploadCloud } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
@@ -695,7 +695,7 @@ function InventoryPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Modifica articolo" : "Nuovo articolo"}</DialogTitle>
             <DialogDescription>
-              Form costruito dai campi leggibili nello sketch 005217. I campi con spunta a V vengono anche salvati nella sezione riutilizzabile.
+              Compila i dati dell’articolo. I campi con spunta vengono salvati nella sezione riutilizzabile.
             </DialogDescription>
           </DialogHeader>
 
