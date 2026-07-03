@@ -124,9 +124,9 @@
   input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator,
   input[type="month"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.85);
+    filter: invert(1) brightness(2);
     cursor: pointer;
-    opacity: 0.9;
+    opacity: 1;
   }
 }
 
