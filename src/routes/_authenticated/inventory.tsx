@@ -941,14 +941,14 @@ function Field({ label, children, error, fieldKey, hint }: { label: string; chil
       <div
         className={
           error
-            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
+            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input]:focus-visible:ring-2 [&_input]:focus-visible:ring-destructive [&_input]:focus-visible:ring-offset-2 [&_input]:focus-visible:ring-offset-background [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_button[role=combobox]]:focus-visible:ring-2 [&_button[role=combobox]]:focus-visible:ring-destructive [&_textarea]:border-destructive [&_textarea]:bg-destructive/10 [&_textarea]:focus-visible:ring-2 [&_textarea]:focus-visible:ring-destructive"
             : undefined
         }
       >
         {children}
       </div>
       {error && (
-        <p className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
+        <p role="alert" aria-live="polite" className="flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
