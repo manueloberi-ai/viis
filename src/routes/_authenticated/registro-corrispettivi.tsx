@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/registro-corrispettivi")({
   component: RegistroCorrispettiviPage,
 });
 
-const SOLD_STATES = ["Venduto", "Venduto Consegnato"];
+const SOLD_STATES = ["Venduto spedito", "Venduto consegnato"];
 
 type Row = {
   id: string;
