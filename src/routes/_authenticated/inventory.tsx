@@ -478,6 +478,21 @@ function InventoryPage() {
     toast.success("Campi spuntati applicati al form");
   };
 
+  const highlightDateFields = () => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+        .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+      const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+      first?.focus();
+      first?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  const clearDateHighlight = () => {
+    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+  };
+
   const handleSubmit = () => {
     // Client-side guard mirroring the DB CHECK / trigger: block INSERT/UPDATE
     // when data_acquisto > data_vendita before hitting the server.
@@ -485,18 +500,10 @@ function InventoryPage() {
       const msg = "La data di acquisto non può essere successiva alla data di vendita.";
       setDateError(msg);
       toast.error("Date non valide", { description: msg });
-      requestAnimationFrame(() => {
-        document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
-          .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
-        const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
-        first?.focus();
-        first?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      highlightDateFields();
       return;
     }
-    // Clear any visual ring when dates become valid again.
-    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
-      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+    clearDateHighlight();
     setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
