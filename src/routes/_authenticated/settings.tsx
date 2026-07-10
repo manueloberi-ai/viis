@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -475,17 +475,10 @@ function PrivacySection() {
   const deleteAccount = async () => {
     setDeleting(true);
     try {
-      const { data: u, error: ue } = await supabase.auth.getUser();
-      if (ue || !u.user) throw ue ?? new Error("Sessione non valida");
-      // Clean up user-owned data (RLS scopes to current user)
-      const [adsRes, invRes] = await Promise.all([
-        supabase.from("ads").delete().eq("user_id", u.user.id),
-        supabase.from("inventory_items").delete().eq("user_id", u.user.id),
-      ]);
-      if (adsRes.error) throw adsRes.error;
-      if (invRes.error) throw invRes.error;
+      const { deleteMyAccount } = await import("@/lib/account.functions");
+      await deleteMyAccount();
       await supabase.auth.signOut();
-      toast.success("Account eliminato", { description: "I tuoi dati sono stati rimossi." });
+      toast.success("Account eliminato", { description: "Il tuo account e tutti i dati collegati sono stati rimossi." });
       resetFlow();
       navigate({ to: "/auth" });
     } catch (e) {
@@ -503,19 +496,19 @@ function PrivacySection() {
       <p className="text-sm text-muted-foreground">Documenti legali e gestione dei tuoi dati personali.</p>
 
       <div className="mt-6 grid gap-2 sm:grid-cols-3">
-        {[
-          { label: "Termini e Condizioni", href: "/legal/termini" },
-          { label: "Cookie Policy", href: "/legal/cookie" },
-          { label: "Condizioni d'uso", href: "/legal/uso" },
-        ].map((l) => (
-          <a
+        {([
+          { label: "Termini e Condizioni", to: "/legal/termini" as const },
+          { label: "Cookie Policy", to: "/legal/cookie" as const },
+          { label: "Condizioni d'uso", to: "/legal/uso" as const },
+        ]).map((l) => (
+          <Link
             key={l.label}
-            href={l.href}
+            to={l.to}
             className="flex items-center justify-between rounded-lg border border-border bg-background/40 px-4 py-3 text-sm transition-colors hover:bg-muted"
           >
             {l.label}
             <ExternalLink className="h-4 w-4 text-muted-foreground" />
-          </a>
+          </Link>
         ))}
       </div>
 

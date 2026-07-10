@@ -13,6 +13,9 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LegalUsoRouteImport } from './routes/legal.uso'
+import { Route as LegalTerminiRouteImport } from './routes/legal.termini'
+import { Route as LegalCookieRouteImport } from './routes/legal.cookie'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedRegistroCorrispettiviRouteImport } from './routes/_authenticated/registro-corrispettivi'
@@ -41,6 +44,21 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalUsoRoute = LegalUsoRouteImport.update({
+  id: '/legal/uso',
+  path: '/legal/uso',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalTerminiRoute = LegalTerminiRouteImport.update({
+  id: '/legal/termini',
+  path: '/legal/termini',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LegalCookieRoute = LegalCookieRouteImport.update({
+  id: '/legal/cookie',
+  path: '/legal/cookie',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
@@ -110,6 +128,9 @@ export interface FileRoutesByFullPath {
   '/registro-corrispettivi': typeof AuthenticatedRegistroCorrispettiviRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/cookie': typeof LegalCookieRoute
+  '/legal/termini': typeof LegalTerminiRoute
+  '/legal/uso': typeof LegalUsoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,6 +146,9 @@ export interface FileRoutesByTo {
   '/registro-corrispettivi': typeof AuthenticatedRegistroCorrispettiviRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/settings': typeof AuthenticatedSettingsRoute
+  '/legal/cookie': typeof LegalCookieRoute
+  '/legal/termini': typeof LegalTerminiRoute
+  '/legal/uso': typeof LegalUsoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,6 +166,9 @@ export interface FileRoutesById {
   '/_authenticated/registro-corrispettivi': typeof AuthenticatedRegistroCorrispettiviRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/legal/cookie': typeof LegalCookieRoute
+  '/legal/termini': typeof LegalTerminiRoute
+  '/legal/uso': typeof LegalUsoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,6 +186,9 @@ export interface FileRouteTypes {
     | '/registro-corrispettivi'
     | '/reports'
     | '/settings'
+    | '/legal/cookie'
+    | '/legal/termini'
+    | '/legal/uso'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -174,6 +204,9 @@ export interface FileRouteTypes {
     | '/registro-corrispettivi'
     | '/reports'
     | '/settings'
+    | '/legal/cookie'
+    | '/legal/termini'
+    | '/legal/uso'
   id:
     | '__root__'
     | '/'
@@ -190,6 +223,9 @@ export interface FileRouteTypes {
     | '/_authenticated/registro-corrispettivi'
     | '/_authenticated/reports'
     | '/_authenticated/settings'
+    | '/legal/cookie'
+    | '/legal/termini'
+    | '/legal/uso'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +233,9 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  LegalCookieRoute: typeof LegalCookieRoute
+  LegalTerminiRoute: typeof LegalTerminiRoute
+  LegalUsoRoute: typeof LegalUsoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -227,6 +266,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/uso': {
+      id: '/legal/uso'
+      path: '/legal/uso'
+      fullPath: '/legal/uso'
+      preLoaderRoute: typeof LegalUsoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/termini': {
+      id: '/legal/termini'
+      path: '/legal/termini'
+      fullPath: '/legal/termini'
+      preLoaderRoute: typeof LegalTerminiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/legal/cookie': {
+      id: '/legal/cookie'
+      path: '/legal/cookie'
+      fullPath: '/legal/cookie'
+      preLoaderRoute: typeof LegalCookieRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -337,6 +397,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  LegalCookieRoute: LegalCookieRoute,
+  LegalTerminiRoute: LegalTerminiRoute,
+  LegalUsoRoute: LegalUsoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
