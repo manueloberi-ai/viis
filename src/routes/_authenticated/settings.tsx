@@ -475,17 +475,10 @@ function PrivacySection() {
   const deleteAccount = async () => {
     setDeleting(true);
     try {
-      const { data: u, error: ue } = await supabase.auth.getUser();
-      if (ue || !u.user) throw ue ?? new Error("Sessione non valida");
-      // Clean up user-owned data (RLS scopes to current user)
-      const [adsRes, invRes] = await Promise.all([
-        supabase.from("ads").delete().eq("user_id", u.user.id),
-        supabase.from("inventory_items").delete().eq("user_id", u.user.id),
-      ]);
-      if (adsRes.error) throw adsRes.error;
-      if (invRes.error) throw invRes.error;
+      const { deleteMyAccount } = await import("@/lib/account.functions");
+      await deleteMyAccount();
       await supabase.auth.signOut();
-      toast.success("Account eliminato", { description: "I tuoi dati sono stati rimossi." });
+      toast.success("Account eliminato", { description: "Il tuo account e tutti i dati collegati sono stati rimossi." });
       resetFlow();
       navigate({ to: "/auth" });
     } catch (e) {
