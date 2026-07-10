@@ -405,9 +405,10 @@ function InventoryPage() {
         err.code === "VIIS1" ||
         (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? ""))
       ) {
-        toast.error("Date non valide", {
-          description: "La data di acquisto non può essere successiva alla data di vendita.",
-        });
+        const msg = "La data di acquisto non può essere successiva alla data di vendita.";
+        setDateError(msg);
+        highlightDateFields();
+        toast.error("Date non valide", { description: msg });
         return;
       }
       const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
