@@ -101,7 +101,52 @@ async def main() -> int:
             await browser.close()
             return 1
 
-        print("PASS: save blocked, inline error visible, no Supabase write attempted.")
+        print("PASS (create): save blocked, inline error visible, no Supabase write attempted.")
+
+        # -----------------------------------------------------------------
+        # Edit-flow scenario: reopen an existing item and repeat the check.
+        # -----------------------------------------------------------------
+        # Close the create dialog.
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(300)
+
+        edit_btn = page.get_by_role("button", name="Modifica").first
+        if await edit_btn.count() == 0:
+            print("SKIP (edit): no existing inventory row to edit.")
+            await browser.close()
+            return 0
+
+        await edit_btn.click()
+        await page.wait_for_selector('[data-field="data_acquisto"] input[type="date"]')
+        await page.screenshot(path=str(OUT / "05_edit_open.png"))
+
+        await page.locator('[data-field="data_vendita"] input[type="date"]').fill("2026-06-10")
+        await page.locator('[data-field="data_acquisto"] input[type="date"]').fill("2026-06-20")
+        await page.screenshot(path=str(OUT / "06_edit_bad_dates.png"))
+
+        await expect(
+            page.locator('[data-field="data_acquisto"]').get_by_text(EXPECTED_MSG)
+        ).to_be_visible(timeout=3000)
+
+        # Both fields must carry the destructive ring highlight after Salva.
+        supabase_calls.clear()
+        await page.get_by_role("button", name="Salva").first.click()
+        await page.wait_for_timeout(600)
+        await page.screenshot(path=str(OUT / "07_edit_after_save.png"))
+
+        for field in ("data_acquisto", "data_vendita"):
+            classes = await page.locator(f'[data-field="{field}"] input').get_attribute("class")
+            if not classes or "ring-destructive" not in classes:
+                print(f"FAIL (edit): {field} input missing destructive ring highlight")
+                await browser.close()
+                return 1
+
+        if supabase_calls:
+            print("FAIL (edit): form hit Supabase despite invalid dates:", supabase_calls)
+            await browser.close()
+            return 1
+
+        print("PASS (edit): save blocked, inline error visible, both fields highlighted.")
         await browser.close()
         return 0
 

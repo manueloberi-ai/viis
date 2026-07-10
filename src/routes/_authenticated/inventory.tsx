@@ -405,9 +405,10 @@ function InventoryPage() {
         err.code === "VIIS1" ||
         (err.code === "23514" && /data_acquisto_le_vendita/.test(err.message ?? ""))
       ) {
-        toast.error("Date non valide", {
-          description: "La data di acquisto non può essere successiva alla data di vendita.",
-        });
+        const msg = "La data di acquisto non può essere successiva alla data di vendita.";
+        setDateError(msg);
+        highlightDateFields();
+        toast.error("Date non valide", { description: msg });
         return;
       }
       const desc = [err.message, err.code, err.details, err.hint].filter(Boolean).join(" · ");
@@ -477,6 +478,21 @@ function InventoryPage() {
     toast.success("Campi spuntati applicati al form");
   };
 
+  const highlightDateFields = () => {
+    requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+        .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+      const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
+      first?.focus();
+      first?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
+
+  const clearDateHighlight = () => {
+    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
+      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+  };
+
   const handleSubmit = () => {
     // Client-side guard mirroring the DB CHECK / trigger: block INSERT/UPDATE
     // when data_acquisto > data_vendita before hitting the server.
@@ -484,18 +500,10 @@ function InventoryPage() {
       const msg = "La data di acquisto non può essere successiva alla data di vendita.";
       setDateError(msg);
       toast.error("Date non valide", { description: msg });
-      requestAnimationFrame(() => {
-        document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
-          .forEach((el) => el.classList.add("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
-        const first = document.querySelector<HTMLElement>('[data-field="data_acquisto"] input');
-        first?.focus();
-        first?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      highlightDateFields();
       return;
     }
-    // Clear any visual ring when dates become valid again.
-    document.querySelectorAll<HTMLElement>('[data-field="data_acquisto"] input, [data-field="data_vendita"] input')
-      .forEach((el) => el.classList.remove("ring-2", "ring-destructive", "ring-offset-1", "ring-offset-background"));
+    clearDateHighlight();
     setDateError(null);
     const checkedValues = Object.fromEntries(
       CHECKED_KEYS.map((key) => [key, form[key]]),
@@ -933,14 +941,14 @@ function Field({ label, children, error, fieldKey, hint }: { label: string; chil
       <div
         className={
           error
-            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_textarea]:border-destructive [&_textarea]:bg-destructive/10"
+            ? "rounded-md [&_input]:border-destructive [&_input]:bg-destructive/10 [&_input]:text-foreground [&_input]:focus-visible:ring-2 [&_input]:focus-visible:ring-destructive [&_input]:focus-visible:ring-offset-2 [&_input]:focus-visible:ring-offset-background [&_input:focus]:bg-destructive/15 [&_button[role=combobox]]:border-destructive [&_button[role=combobox]]:bg-destructive/10 [&_button[role=combobox]]:focus-visible:ring-2 [&_button[role=combobox]]:focus-visible:ring-destructive [&_textarea]:border-destructive [&_textarea]:bg-destructive/10 [&_textarea]:focus-visible:ring-2 [&_textarea]:focus-visible:ring-destructive"
             : undefined
         }
       >
         {children}
       </div>
       {error && (
-        <p className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
+        <p role="alert" aria-live="polite" className="flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs font-semibold text-destructive">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
